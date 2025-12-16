@@ -126,21 +126,20 @@ git pull origin main
 #### ターミナルでのビルド
 
 ```bash
-# XeLaTeXを使用（推奨）
-latexmk -xelatex -synctex=1 main.tex
+# XeLaTeXを使用（参考文献も自動処理、推奨）
+latexmk -xelatex -synctex=1 -bibtex main.tex
 
 # 自動再コンパイルモード（ファイル変更を監視）
-latexmk -xelatex -synctex=1 -pvc main.tex
+latexmk -xelatex -synctex=1 -bibtex -pvc main.tex
 
-# 手動でXeLaTeXを実行（参考文献がある場合）
-xelatex -synctex=1 main.tex
-bibtex main
-xelatex -synctex=1 main.tex
-xelatex -synctex=1 main.tex
+# クリーンビルド（一時ファイルを削除してからビルド）
+latexmk -C && latexmk -xelatex -synctex=1 -bibtex main.tex
 
 # 一時ファイルをクリーンアップ
 latexmk -c
 ```
+
+**注意**: このプロジェクトは`references.bib`を使用しているため、`-bibtex`オプションを付けてビルドしてください。
 
 ## ファイル構成
 

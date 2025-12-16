@@ -1,9 +1,24 @@
 {
   "latex-workshop.latex.recipes": [
     {
+      "name": "latexmk (XeLaTeX) 🔃",
+      "tools": [
+        "latexmk-xelatex"
+      ]
+    },
+    {
       "name": "latexmk 🔃",
       "tools": [
         "latexmk"
+      ]
+    },
+    {
+      "name": "xelatex ➞ bibtex ➞ xelatex × 2",
+      "tools": [
+        "xelatex",
+        "bibtex",
+        "xelatex",
+        "xelatex"
       ]
     },
     {
@@ -14,15 +29,22 @@
         "pdflatex",
         "pdflatex"
       ]
-    },
-    {
-      "name": "pdflatex",
-      "tools": [
-        "pdflatex"
-      ]
     }
   ],
   "latex-workshop.latex.tools": [
+    {
+      "name": "latexmk-xelatex",
+      "command": "latexmk",
+      "args": [
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
+        "-xelatex",
+        "-outdir=%OUTDIR%",
+        "%DOC%"
+      ],
+      "env": {}
+    },
     {
       "name": "latexmk",
       "command": "latexmk",
@@ -32,6 +54,17 @@
         "-file-line-error",
         "-pdf",
         "-outdir=%OUTDIR%",
+        "%DOC%"
+      ],
+      "env": {}
+    },
+    {
+      "name": "xelatex",
+      "command": "xelatex",
+      "args": [
+        "-synctex=1",
+        "-interaction=nonstopmode",
+        "-file-line-error",
         "%DOC%"
       ],
       "env": {}

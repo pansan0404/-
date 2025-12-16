@@ -105,21 +105,41 @@ git pull origin main
 
 ### コンパイルコマンド
 
+このプロジェクトは日本語LaTeX（`bxjsarticle`）を使用しているため、**XeLaTeX**エンジンが必要です。
+
+#### VS Codeでのビルド（推奨）
+
+1. **LaTeX Workshop拡張機能をインストール**
+   - VS Codeを開く
+   - 拡張機能タブ（⌘+Shift+X）で「LaTeX Workshop」を検索してインストール
+   - または、`.vscode/extensions.json`に記載されている推奨拡張機能からインストール
+
+2. **ビルド方法**
+   - `main.tex`を開く
+   - **⌘+Option+B**（Mac）または**Ctrl+Alt+B**（Windows/Linux）でビルド
+   - または、右上の「**Build LaTeX project**」ボタンをクリック
+   - PDFプレビューが自動的に表示されます
+
+3. **自動ビルド**
+   - ファイルを保存すると自動的に再ビルドされます（設定で有効化）
+
+#### ターミナルでのビルド
+
 ```bash
-# 基本的なコンパイル
-pdflatex main.tex
-
-# 参考文献を含む場合（複数回実行が必要）
-pdflatex main.tex
-bibtex main
-pdflatex main.tex
-pdflatex main.tex
-
-# latexmkを使用（自動で必要な回数だけ実行）
-latexmk -pdf main.tex
+# XeLaTeXを使用（推奨）
+latexmk -xelatex -synctex=1 main.tex
 
 # 自動再コンパイルモード（ファイル変更を監視）
-latexmk -pdf -pvc main.tex
+latexmk -xelatex -synctex=1 -pvc main.tex
+
+# 手動でXeLaTeXを実行（参考文献がある場合）
+xelatex -synctex=1 main.tex
+bibtex main
+xelatex -synctex=1 main.tex
+xelatex -synctex=1 main.tex
+
+# 一時ファイルをクリーンアップ
+latexmk -c
 ```
 
 ## ファイル構成

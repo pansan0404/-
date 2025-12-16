@@ -21,8 +21,11 @@
 \usepackage{fontspec}   % 欧文フォント操作用
 \usepackage{xeCJK}      % 日本語フォント操作用
 
-% Source Han Serif JP の ExtraLight (最細) を本文明朝に
-% （フォント設定をここに記述）
+% 日本語フォント設定（macOS用）
+% bxjsarticleは自動的に日本語フォントを設定しますが、明示的に指定することも可能
+\setCJKmainfont{MS PMincho}
+\setCJKsansfont{Hiragino Kaku Gothic ProN}
+\setCJKmonofont{Hiragino Kaku Gothic ProN}
 
 % \usepackage[dvipdfmx]{graphicx}
 % \usepackage[dvipdfmx]{color}
@@ -35,8 +38,9 @@
 
 \graphicspath{images}    % 画像パス設定
 
-\usepackage[utf8]{inputenc} % 入力エンコーディング
-\usepackage[T1]{fontenc}    % 出力エンコーディング
+% XeLaTeXでは不要（UTF-8を直接扱える）
+% \usepackage[utf8]{inputenc} % 入力エンコーディング
+% \usepackage[T1]{fontenc}    % 出力エンコーディング
 \usepackage{booktabs}       % 表の罫線
 \usepackage{graphicx}       % 重複読み込み（意図的）
 

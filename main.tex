@@ -18,20 +18,16 @@
 \usepackage{subcaption}               % サブキャプション
 \usepackage{titlesec}                 % セクション書式の制御
 \usepackage{url}                      % URL の表示
-% XeLaTeXの場合のみフォント設定を読み込む（ローカル環境用）
-\ifxetex
-  \usepackage{fontspec}   % 欧文フォント操作用
-  \usepackage{xeCJK}      % 日本語フォント操作用
-  
-  % 日本語フォント設定（macOS用、ローカル環境のみ）
-  % Overleafではこの設定は使わず、bxjsarticleのデフォルト設定を使用
-  \setCJKmainfont{MS PMincho}
-  \setCJKsansfont{Hiragino Kaku Gothic ProN}
-  \setCJKmonofont{Hiragino Kaku Gothic ProN}
-\else
-  % Overleaf（pdfLaTeX/LuaLaTeX）の場合
-  % bxjsarticleが自動的に適切なフォントを設定します
-\fi
+% フォント設定（Overleaf互換性のためコメントアウト）
+% bxjsarticleが自動的に適切なフォントを設定します
+% ローカルでXeLaTeXを使う場合に日本語が表示されない場合は、以下のコメントを外してください
+% \ifxetex
+%   \usepackage{fontspec}
+%   \usepackage{xeCJK}
+%   \setCJKmainfont{MS PMincho}
+%   \setCJKsansfont{Hiragino Kaku Gothic ProN}
+%   \setCJKmonofont{Hiragino Kaku Gothic ProN}
+% \fi
 
 % \usepackage[dvipdfmx]{graphicx}
 % \usepackage[dvipdfmx]{color}

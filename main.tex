@@ -1,0 +1,296 @@
+\documentclass[a4paper,autodetect-engine,ja=standard,9pt]{bxjsarticle}
+% --------------
+% パッケージ
+% --------------
+\usepackage{amsmath}                  % 数式環境のサポート
+\usepackage{amsfonts}                 % 数学フォント
+\usepackage{caption}                  % 図表キャプションの設定
+\usepackage[symbol,hang,flushmargin]{footmisc} % 脚注記号とマージン調整
+\renewcommand{\thefootnote}{\fnsymbol{footnote}} % 脚注を記号に
+\setcounter{footnote}{0}
+\usepackage[dvipdfmx]{graphicx}       % 画像取り込み (dvipdfmx ドライバ)
+\usepackage{grffile}                  % 拡張ファイル名の対応
+\usepackage{lipsum}                   % ダミーテキスト
+\usepackage[numbers]{natbib}          % 数値型引用
+% \usepackage{stfloats}                 % figure* を [b]（bottom）に対応させる
+\usepackage{dblfloatfix}
+% \usepackage[font=scriptsize]{subfig}  % サブ図
+\usepackage{subcaption}               % サブキャプション
+\usepackage{titlesec}                 % セクション書式の制御
+\usepackage{url}                      % URL の表示
+\usepackage{fontspec}   % 欧文フォント操作用
+\usepackage{xeCJK}      % 日本語フォント操作用
+
+% Source Han Serif JP の ExtraLight (最細) を本文明朝に
+% （フォント設定をここに記述）
+
+% \usepackage[dvipdfmx]{graphicx}
+% \usepackage[dvipdfmx]{color}
+
+% ここからコピペ: 画像と色設定
+\usepackage{graphicx}    % 画像取り込み
+\usepackage{color}       % 色指定
+
+\usepackage{multirow}    % 表中の複数行セル
+
+\graphicspath{images}    % 画像パス設定
+
+\usepackage[utf8]{inputenc} % 入力エンコーディング
+\usepackage[T1]{fontenc}    % 出力エンコーディング
+\usepackage{booktabs}       % 表の罫線
+\usepackage{graphicx}       % 重複読み込み（意図的）
+
+\pagestyle{empty}           % ヘッダー・フッターなし
+
+\usepackage{bm}             % 太字数学記号
+
+% 6pt×行送り6pt のキャプション用フォントを定義
+\DeclareCaptionFont{sixpt}{\fontsize{7pt}{0pt}\selectfont}
+
+% サブ図キャプションを
+%  ・ラベルは太字（labelfont=bf）
+%  ・本文（説明文）はsixpt
+%  ・中央揃え、1行でも中央寄せを効かせる
+\captionsetup[subfigure]{
+  labelfont={bf,sixpt},
+  textfont=sixpt,
+  justification=centering,
+  singlelinecheck=false,
+  belowskip=0pt    % キャプション下の余白を 2pt に
+}
+\captionsetup[figure]{
+    belowskip=0pt
+}
+
+\captionsetup[table]{
+  position=top,    % キャプションを表の上に
+}
+
+\usepackage{booktabs}
+\usepackage{colortbl}   % \rowcolor, \rowcolors
+\usepackage{xcolor}
+\definecolor{highlight}{HTML}{FFE5CC}  % お好みのハイライト色
+
+% --------------
+% レイアウト
+% --------------
+\setpagelayout*{top=40truemm,bottom=35truemm,left=30truemm,right=30truemm}
+
+% 独自コマンド例: 均等割り付け
+\newcommand\kintouwari[2]{{%
+  \setkanjiskip{\fill}%
+  \makebox[#1\zw][s]{#2}}}
+
+% カラム間隔設定
+\setlength{\columnsep}{20truept}
+% 縦は49行であり，14truept が 1行 の高さ
+
+% セクション書式設定
+% セクション書式設定
+\titleformat{\section}
+  {\fontsize{18\ascpt}{18truept}\bfseries}
+  {\thesection}{1em}{}
+\titleformat{\subsection}
+  {\fontsize{16\ascpt}{16truept}\bfseries}
+  {\thesubsection}{1em}{}
+% ★ subsubsection の設定を変更 ★
+\titleformat{\subsubsection}
+  {\fontsize{14\ascpt}{14truept}\bfseries}
+  {}          % 番号（空）
+  {0pt}       % ★ ここを 0pt にする ★
+  {}
+
+
+
+
+
+% --------------
+% Document
+% --------------
+\begin{document}
+
+  \begin{center}
+    \vspace{14truept}
+    {\bfseries  
+    % ! タイトル -----------------------------------
+    \fontsize{16\ascpt}{25\ascpt}\selectfont
+    ドローンを用いた3次元再構成における\\テキスト指示型編集技術の開発
+
+    % ! --------------------------------------------
+    }
+    \par
+    \vspace{40truept}
+
+    % ──────────────── 著者ブロック ────────────────
+    {\fontsize{14\ascpt}{10.5\ascpt}\selectfont
+      \begin{tabular}{@{}ccc@{}}
+        菊地佑太 \\
+      \end{tabular}
+    }
+
+    \end{center}
+
+    \vspace{50truept}
+
+ \begin{center}
+
+    {\bfseries\fontsize{11\ascpt}{10.5\ascpt}\selectfont
+      \begin{tabular}{@{}ccc@{}}
+        内容梗概 \\
+      \end{tabular}
+    }
+ \end{center}
+
+\vspace{25truept}
+    
+
+% 縦49行に合わせる
+\fontsize{11\ascpt}{16truept}\selectfont % 12pt に変更
+\setlength{\baselineskip}{20pt}% デフォルト12pt。行送りを16ptに
+
+
+
+%-----------------------------------
+% セクション: アブストラクト
+%-----------------------------------
+
+
+
+環境の画像から自由視点画像を得る技術は，近年のAIの発達によって急激に発展している．
+3D Gaussian Splatting（3DGS）はその代表的な例である．
+ドローンを用いて屋外撮影をする場合の固有の課題が発生するが，
+それらに対する先行研究もある．
+例えば，時刻とともに人や物の位置が変化してしまうため，3次元再構成が困難になるが
+DroneSplatではそれに対する対応が行われている．
+
+
+
+本研究では映り込んだ不要物体を除去することを考える．
+提案手法では，テキストで除去する物体を指定することで，自由視点画像から所望の物体を除去することができる．
+これにより，ドローン画像の3次元再構成の活用がしやすくなる．
+これを実現するために，学習用画像から不要な物体をCLIP等のマルチモーダル画像分類器で同定し，学習に使用する画像から削除することで，再構成させる自由視点画像の最適化を試みる．
+
+
+\footnotetext{東北大学大学院情報科学研究科　応用情報科学専攻　学位論文, C4IM4010, 2025 年 11 月25 日}
+
+\newpage
+\tableofcontents
+
+\newpage
+\section{はじめに}
+\subsection{本研究の概要}
+
+環境の画像から自由視点画像を得る技術は，近年のAIの発達によって急激に発展している．
+3D Gaussian Splatting（3DGS） \cite{kerbl3Dgaussians}はその代表的な例である．
+ドローンを用いて屋外撮影をする場合の固有の課題が発生するが，
+それらに対する先行研究もある．
+例えば，時刻とともに人や物の位置が変化してしまうため，3次元再構成が困難になるが（図1-a），
+DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}ではそれに対する対応が行われている（図1-b）．
+
+
+
+
+
+本研究では映り込んだ不要物体を除去することを考える．
+提案手法では，テキストで除去する物体を指定することで，自由視点画像から所望の物体を除去することができる．
+これにより，ドローン画像の3次元再構成の活用がしやすくなる．
+これを実現するために，学習用画像から不要な物体をCLIP\cite{DBLP:journals/corr/abs-2103-00020}等のマルチモーダル画像分類器で同定し，学習に使用する画像から削除することで（図2），再構成させる自由視点画像の最適化を試みる．
+
+1.3DGS\cite{kerbl3Dgaussians}
+2.DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}
+3.ravi2024sam2\cite{ravi2024sam2}
+4.InpaintAnything\cite{yu2023inpaint}
+5.CLIP\cite{DBLP:journals/corr/abs-2103-00020}
+6.LaMa\cite{suvorov2021resolution}
+7.MVinpainter\cite{cao2024mvinpainter}
+
+\begin{table}[b]
+  \centering
+  \caption{Simingshanデータセットにおける各手法の性能比較}
+  \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
+  \begin{tabular}{l
+                  S[table-format=2.2]
+                  S[table-format=1.3]
+                  S[table-format=1.3]}
+    \toprule
+    Method
+      & \multicolumn{3}{c}{Simingshan} \\
+    \cmidrule(lr){2-4}
+      & {PSNR\(\uparrow\)} & {SSIM\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
+    \midrule
+    NeRF\cite{mildenhall2020nerfrepresentingscenesneural}                 & 19.07 & 0.417 & 0.267 \\
+    3DGS\cite{kerbl3Dgaussians}          & 19.68 & 0.476 & 0.254 \\
+    DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}                  & 22.76 & 0.759 & 0.152 \\
+    Ours                        & 22.35 & 0.744 & 0.174 \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:metrics}
+\end{table}
+
+
+\begin{figure}[b]     % !b でコラム下部
+  \centering
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig1_a.jpg}
+    \caption{3DGS\cite{kerbl3Dgaussians}で作成\\車が動いている場面を表現できない}
+    \label{fig:3dgs}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig1_b.jpg}
+    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で生成\\動体を無視して表現できる}
+    \label{fig:prior}
+  \end{subfigure}
+  \vspace{1ex}
+  \caption{動的シーンにおける自由視点画像生成の例}
+  \label{fig:comparison}
+\end{figure}
+\newpage
+
+\subsection{本研究の構成}
+本論文は次のように構成される。2章では...
+
+\newpage
+\section{研究背景}
+\subsection{関連研究}
+\subsubsection{3次元再構成}
+3次元再構成は、
+\subsubsection{NeRF}
+\subsubsection{3DGS}
+このレンダリング速度の課題を克服するために、2023年に発表されたのが3D Gaussian Splatting (3DGS) \cite{kerbl3Dgaussians} である。3DGSは、シーンを膨大な数の**3次元ガウス分布（Gaussian）**の集合として表現する。各ガウス分布は、位置、共分散行列（形状と向き）、不透明度、そして球状調和関数（Spherical Harmonics: SH）に基づく色情報をパラメータとして持つ。
+3DGSの最大の特徴は、レンダリングプロセスにある。
+自由視点画像を生成する際、これらの3Dガウス分布をカメラ平面に**スプラッティング（射影）**し、ハードウェアが高速に処理できるラスタライズ技術を利用してピクセル単位の色を合成する。これにより、NeRFと比較して画質を維持しつつ、学習時間およびレンダリング速度を大幅に短縮し、リアルタイムでの自由視点ナビゲーションを可能にした \cite{kerbl3Dgaussians}。本研究の提案手法も、この高速な3DGSを基盤技術として採用している
+
+\subsection{課題}
+
+\newpage
+\section{提案手法}
+\subsection{不要物同定アルゴリズム}
+\subsection{拡散モデルによる削除部の補完}
+
+
+\newpage
+\section{評価実験と考察}
+\subsection{データセット}
+\subsection{学習}
+\subsection{評価手法}
+\subsection{結果}
+
+\newpage
+\section{おわりに}
+\subsection{結論}
+\subsection{今後の課題}
+
+
+% 手動で参考文献見出しを配置
+\begingroup
+  % リスト本体を 8 pt に設定（デフォルト8,10）小さくしたかったら変える
+  % \fontsize{8\ascpt}{8truept}\selectfont
+  \bibliographystyle{unsrt}
+  \bibliography{references}
+\endgroup
+
+
+
+\end{document}

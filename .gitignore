@@ -1,0 +1,40 @@
+# LaTeX関連の一時ファイル
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.bcf
+*.run.xml
+*.auxlock
+
+# コンパイル済みPDF（必要に応じてコメントアウト）
+# *.pdf
+
+# バックアップファイル
+*~
+*.backup
+*.bak
+*.swp
+*.swo
+
+# OS関連
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# エディタ関連
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Overleaf関連
+.overleaf/
+

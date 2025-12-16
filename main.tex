@@ -18,16 +18,16 @@
 \usepackage{subcaption}               % サブキャプション
 \usepackage{titlesec}                 % セクション書式の制御
 \usepackage{url}                      % URL の表示
-% フォント設定（Overleaf互換性のためコメントアウト）
-% bxjsarticleが自動的に適切なフォントを設定します
-% ローカルでXeLaTeXを使う場合に日本語が表示されない場合は、以下のコメントを外してください
-% \ifxetex
-%   \usepackage{fontspec}
-%   \usepackage{xeCJK}
-%   \setCJKmainfont{MS PMincho}
-%   \setCJKsansfont{Hiragino Kaku Gothic ProN}
-%   \setCJKmonofont{Hiragino Kaku Gothic ProN}
-% \fi
+% フォント設定（XeLaTeXの場合のみ有効化）
+% Overleafでは通常pdfLaTeX/LuaLaTeXを使うため、この設定はスキップされます
+\ifxetex
+  \usepackage{fontspec}
+  \usepackage{xeCJK}
+  % macOSで利用可能な日本語フォントを設定
+  \setCJKmainfont{MS PMincho}
+  \setCJKsansfont{Hiragino Kaku Gothic ProN}
+  \setCJKmonofont{Hiragino Kaku Gothic ProN}
+\fi
 
 % \usepackage[dvipdfmx]{graphicx}
 % \usepackage[dvipdfmx]{color}

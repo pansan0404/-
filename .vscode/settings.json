@@ -113,8 +113,15 @@
   ],
   "latex-workshop.view.pdf.viewer": "tab",
   "latex-workshop.synctex.afterBuild.enabled": true,
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  "latex-workshop.latex.recipe.default": "first",
+  "latex-workshop.latex.outDir": "%DIR%",
   "files.associations": {
     "*.tex": "latex"
+  },
+  "[latex]": {
+    "editor.wordWrap": "on",
+    "editor.formatOnSave": false
   }
 }
 

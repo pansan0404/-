@@ -30,7 +30,7 @@ Thumbs.db
 desktop.ini
 
 # エディタ関連
-.vscode/
+# .vscode/ は設定ファイルを共有するため除外しない
 .idea/
 *.sublime-project
 *.sublime-workspace

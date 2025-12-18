@@ -69,12 +69,19 @@ latexmk -pdf -pvc main.tex  # 自動再コンパイルモード
 
 4. **変更をGitHubにプッシュ**：
 ```bash
+# 変更をステージング
 git add .
+
+# コミット（変更内容を説明するメッセージを入力）
 git commit -m "変更内容の説明"
+
+# GitHubにプッシュ
 git push origin main
 ```
 
 5. Overleafで「**Menu**」→「**Git**」→「**Pull from GitHub**」をクリックして変更を取得
+
+**現在のリポジトリ**: `https://github.com/pansan0404/-.git`
 
 #### GitHubから最新の変更を取得する場合（ローカル）
 ```bash

@@ -19,12 +19,13 @@
 \usepackage{titlesec}                 % セクション書式の制御
 \usepackage{url}                      % URL の表示
 % フォント設定（ローカル環境用、XeLaTeXの場合のみ）
-% macOSで利用可能な日本語フォントを明示的に設定
+% 本文：明朝体、見出し：ゴシック体
 \ifxetex
   \usepackage{fontspec}
   \usepackage{xeCJK}
-  % macOSの日本語フォントを設定（MS PMinchoを使用）
-  \setCJKmainfont{MS PMincho}
+  % 本文用の明朝体
+  \setCJKmainfont{Noto Serif JP}
+  % 見出し用のゴシック体（bxjsarticleが自動的に見出しに適用）
   \setCJKsansfont{Hiragino Kaku Gothic ProN}
   \setCJKmonofont{Hiragino Kaku Gothic ProN}
 \fi
@@ -93,16 +94,16 @@
 % 縦は49行であり，14truept が 1行 の高さ
 
 % セクション書式設定
-% セクション書式設定
+% セクション書式設定（見出しをゴシック体に）
 \titleformat{\section}
-  {\fontsize{18\ascpt}{18truept}\bfseries}
+  {\sffamily\fontsize{18\ascpt}{18truept}\bfseries}
   {\thesection}{1em}{}
 \titleformat{\subsection}
-  {\fontsize{16\ascpt}{16truept}\bfseries}
+  {\sffamily\fontsize{14\ascpt}{14truept}\bfseries}
   {\thesubsection}{1em}{}
 % ★ subsubsection の設定を変更 ★
 \titleformat{\subsubsection}
-  {\fontsize{14\ascpt}{14truept}\bfseries}
+  {\sffamily\fontsize{12\ascpt}{12truept}\bfseries}
   {}          % 番号（空）
   {0pt}       % ★ ここを 0pt にする ★
   {}
@@ -118,7 +119,7 @@
 
   \begin{center}
     \vspace{14truept}
-    {\bfseries  
+    {\sffamily\bfseries  
     % ! タイトル -----------------------------------
     \fontsize{16\ascpt}{25\ascpt}\selectfont
     ドローンを用いた3次元再構成における\\テキスト指示型編集技術の開発
@@ -141,7 +142,7 @@
 
  \begin{center}
 
-    {\bfseries\fontsize{11\ascpt}{10.5\ascpt}\selectfont
+   {\sffamily\bfseries\fontsize{11\ascpt}{10.5\ascpt}\selectfont
       \begin{tabular}{@{}ccc@{}}
         内容梗概 \\
       \end{tabular}
@@ -261,13 +262,23 @@ DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}ではそれに対する�
 \newpage
 \section{研究背景}
 \subsection{関連研究}
-\subsubsection{3次元再構成}
-3次元再構成は、
-\subsubsection{NeRF}
-\subsubsection{3DGS}
-このレンダリング速度の課題を克服するために、2023年に発表されたのが3D Gaussian Splatting (3DGS) \cite{kerbl3Dgaussians} である。3DGSは、シーンを膨大な数の**3次元ガウス分布（Gaussian）**の集合として表現する。各ガウス分布は、位置、共分散行列（形状と向き）、不透明度、そして球状調和関数（Spherical Harmonics: SH）に基づく色情報をパラメータとして持つ。
+\subsubsection{3次元再構成技術}
+3次元再構成とは，3次元空間における物体の形状や位置を再構成する技術である．
+SfM（Structure-from-Motion：運動復元）\cite{snavely2006photo}はその代表的な例である．
+NeRF\cite{mildenhall2020nerfrepresentingscenesneural}はその代表的な例である．
+このレンダリング速度の課題を克服するために、2023年に発表されたのが3D Gaussian Splatting (3DGS) \cite{kerbl3Dgaussians} である。
+3DGSは、シーンを膨大な数の**3次元ガウス分布（Gaussian）**の集合として表現する。
+各ガウス分布は、位置、共分散行列（形状と向き）、不透明度、そして球状調和関数（Spherical Harmonics: SH）に基づく色情報をパラメータとして持つ。
 3DGSの最大の特徴は、レンダリングプロセスにある。
-自由視点画像を生成する際、これらの3Dガウス分布をカメラ平面に**スプラッティング（射影）**し、ハードウェアが高速に処理できるラスタライズ技術を利用してピクセル単位の色を合成する。これにより、NeRFと比較して画質を維持しつつ、学習時間およびレンダリング速度を大幅に短縮し、リアルタイムでの自由視点ナビゲーションを可能にした \cite{kerbl3Dgaussians}。本研究の提案手法も、この高速な3DGSを基盤技術として採用している
+自由視点画像を生成する際、これらの3Dガウス分布をカメラ平面に**スプラッティング（射影）**し、ハードウェアが高速に処理できるラスタライズ技術を利用してピクセル単位の色を合成する。
+これにより、NeRFと比較して画質を維持しつつ、学習時間およびレンダリング速度を大幅に短縮し、リアルタイムでの自由視点ナビゲーションを可能にした \cite{kerbl3Dgaussians}。
+本研究の提案手法も、この高速な3DGSを基盤技術として採用している
+\subsubsection{セマンティックセグメンテーション}
+セマンティックセグメンテーションは，画像の各ピクセルをなんらか意味を持った領域に分割する技術のことである．
+一つの画像に対して一つのラベルを付与する画像分類問題や，画像内の物体を認識し，矩形で過酷む物体検出と比べると，セマンティックセグメンテーションは画像中のピクセルに対してラベルを付与することで，より細かい粒度での物体の分割を行うことができる．
+物体検出は画像内の物体を認識し，矩形で過酷む
+SAM2\cite{ravi2024sam2}はその代表的な例である．
+従来のセマンティックセグメンテーションが特定のクラスの分類を目的とするのに対して，
 
 \subsection{課題}
 
@@ -286,6 +297,7 @@ DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}ではそれに対する�
 
 \newpage
 \section{おわりに}
+おおおおおおおおおおおおお
 \subsection{結論}
 \subsection{今後の課題}
 

@@ -295,7 +295,28 @@ SAM2の最大の特徴は，大規模データセットで学習された汎用�
 \end{figure}
 
 \subsubsection{映り込みに対応した自由視点画像生成技術}
-Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法では，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いて各視点の学習用画像のセグメントを得る．学習過程において，動いているセグメントを段階的に学習から除外することで，動的な不要物体を考慮しない再構成が可能となる．評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている．
+Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法では，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いて各視点の学習用画像のセグメントを得る．学習過程において，動いているセグメントを段階的に学習から除外することで，動的な不要物体を考慮しない再構成が可能となる．評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている（図\ref{fig:comparison}）．
+
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig1_a.jpg}
+    \caption{3DGS\cite{kerbl3Dgaussians}で作成\\車が動いている場面を表現できない}
+    \label{fig:3dgs}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig1_b.jpg}
+    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で生成\\動体を無視して表現できる}
+    \label{fig:prior}
+  \end{subfigure}
+  \vspace{1ex}
+  \caption{動的シーンにおける自由視点画像生成の例}
+  \label{fig:comparison}
+\end{figure}
+\newpage
+
 \subsection{現状の課題}
 
 \newpage
@@ -303,13 +324,13 @@ Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussians
 \subsection{不要物同定アルゴリズム}
 \subsection{拡散モデルによる削除部の補完}
 
-
 \newpage
 \section{評価実験と考察}
 \subsection{データセット}
-\subsection{学習}
-\subsection{評価手法}
-\subsection{結果}
+\subsection{不要物同定アルゴリズムの評価実験}
+\subsubsection{SAM2とCLIPによる不要物同定}
+\subsubsection{SAM3による不要物同定}
+\subsection{拡散モデルによる削除部の補完}
 
 \newpage
 \section{おわりに}
@@ -339,30 +360,12 @@ Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussians
 \end{table}
 
 
-\begin{figure}[b]     % !b でコラム下部
-  \centering
-  \begin{subfigure}[t]{0.48\columnwidth}
-    \centering
-    \includegraphics[width=\linewidth]{img-for-paper/fig1_a.jpg}
-    \caption{3DGS\cite{kerbl3Dgaussians}で作成\\車が動いている場面を表現できない}
-    \label{fig:3dgs}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.48\columnwidth}
-    \centering
-    \includegraphics[width=\linewidth]{img-for-paper/fig1_b.jpg}
-    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で生成\\動体を無視して表現できる}
-    \label{fig:prior}
-  \end{subfigure}
-  \vspace{1ex}
-  \caption{動的シーンにおける自由視点画像生成の例}
-  \label{fig:comparison}
-\end{figure}
-\newpage
+
 
 
 \subsection{結論}
 \subsection{今後の課題}
-課題は．．．．
+課題は
 
 
 % 手動で参考文献見出しを配置

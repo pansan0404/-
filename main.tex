@@ -265,20 +265,60 @@ DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}ではそれに対する�
 \subsubsection{3次元再構成技術}
 3次元再構成とは，3次元空間における物体の形状や位置を再構成する技術である．
 SfM（Structure-from-Motion：運動復元）\cite{snavely2006photo}はその代表的な例である．
+SfMは，同一シーンを異なる視点から撮影した複数の画像から，3次元空間におけるシーンの構造（Structure）と各画像を撮影したカメラの位置・姿勢（Motion）を同時に推定する技術である．
+処理の流れとしては，まず各画像から特徴点（SIFTやORBなどの特徴記述子）を検出し，異なる画像間で対応する特徴点をマッチングする．
+次に，対応点の情報を用いてカメラの内部パラメータと外部パラメータ（位置・姿勢）を推定し，三角測量により3次元点群を復元する．
+最後に，バンドル調整（Bundle Adjustment）と呼ばれる最適化手法により，再投影誤差を最小化することで，カメラパラメータと3次元構造を同時に精密化する．
+SfMは，特別な計測機器を必要とせず，一般的なカメラで撮影した画像のみから3次元モデルを構築できる点が大きな利点であり，フォトグラメトリやデジタルアーカイブ，地図作成などの幅広い分野で活用されている．
+
 NeRF\cite{mildenhall2020nerfrepresentingscenesneural}はその代表的な例である．
+NeRF（Neural Radiance Fields：ニューラル放射輝度場）は，2020年にMildenhallらによって提案された，ニューラルネットワークを用いてシーンを連続的な関数として表現する技術である．
+NeRFは，3次元空間内の任意の点$(x, y, z)$と観測方向$(\theta, \phi)$を入力として，その点における色（RGB値）と密度（不透明度）を出力する関数を多層パーセプトロン（MLP）で学習する．
+学習時には，同一シーンを異なる視点から撮影した複数の画像と，それぞれのカメラパラメータ（位置・姿勢）を用いて，ボリュームレンダリング（Volume Rendering）と呼ばれる手法により画像を生成し，実際の画像との差分を最小化することでニューラルネットワークを最適化する．
+ボリュームレンダリングでは，カメラから各ピクセルに向けてレイ（光線）を投射し，レイに沿ってサンプリングした3次元点における色と密度を積分することで，最終的なピクセル色を計算する．
+この手法により，NeRFは学習時に使用した視点とは異なる任意の視点から高品質な自由視点画像を生成することができる．
+NeRFの主な利点は，従来の点群ベースの手法と比較して，シーンを連続的な関数として表現することで，細部まで高品質な画像を生成できる点である．
+一方で，レンダリング時に各ピクセルごとに数百回のニューラルネットワークの推論が必要となるため，レンダリング速度が非常に遅く，リアルタイムでの自由視点ナビゲーションが困難であるという課題がある．
+
+
 このレンダリング速度の課題を克服するために、2023年に発表されたのが3D Gaussian Splatting (3DGS) \cite{kerbl3Dgaussians} である。
 3DGSは、シーンを膨大な数の**3次元ガウス分布（Gaussian）**の集合として表現する。
 各ガウス分布は、位置、共分散行列（形状と向き）、不透明度、そして球状調和関数（Spherical Harmonics: SH）に基づく色情報をパラメータとして持つ。
 3DGSの最大の特徴は、レンダリングプロセスにある。
 自由視点画像を生成する際、これらの3Dガウス分布をカメラ平面に**スプラッティング（射影）**し、ハードウェアが高速に処理できるラスタライズ技術を利用してピクセル単位の色を合成する。
-これにより、NeRFと比較して画質を維持しつつ、学習時間およびレンダリング速度を大幅に短縮し、リアルタイムでの自由視点ナビゲーションを可能にした \cite{kerbl3Dgaussians}。
+これにより、NeRFと比較して画質を維持しつつ、学習時間およびレンダリング速度を大幅に短縮し、リアルタイムでの自由視点ナビゲーションを可能にした \cite{kerbl3Dgaussians}．
 本研究の提案手法も、この高速な3DGSを基盤技術として採用している
 \subsubsection{セマンティックセグメンテーション}
 セマンティックセグメンテーションは，画像の各ピクセルをなんらか意味を持った領域に分割する技術のことである．
-一つの画像に対して一つのラベルを付与する画像分類問題や，画像内の物体を認識し，矩形で過酷む物体検出と比べると，セマンティックセグメンテーションは画像中のピクセルに対してラベルを付与することで，より細かい粒度での物体の分割を行うことができる．
+一つの画像に対して一つのラベルを付与する画像分類問題や，画像内の物体を認識し，矩形で過酷む物体検出と比べると，セマンティックセグメンテーションは画像中のピクセルに対してラベルを付与することで，より細かい粒度での物体の分割を行うことができる（図\ref{fig:concept}）．
 SAM2\cite{ravi2024sam2}はセマンティックセグメンテーションの代表的な例である．
 
-\subsection{課題}
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}[t]{0.32\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig_concept_classification.png}
+    \caption{画像分類\\画像全体を見て「人」であると判断している}
+    \label{fig:classification}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig_concept_detection.jpg}
+    \caption{物体検出\\画像内の物体を矩形で囲んで認識し，\\それぞれの物体の位置とクラスを特定している}
+    \label{fig:detection}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.32\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig_concept_segmentation.jpg}
+    \caption{セマンティックセグメンテーション\\画像の各ピクセルに対してラベルを付与することで，\\より細かい粒度での物体の分割を行うことができる}
+    \label{fig:segmentation}
+  \end{subfigure}
+  \vspace{1ex}
+  \caption{コンピュータビジョンタスクの比較}
+  \label{fig:concept}
+\end{figure}
+
+\subsection{現状の課題}
 
 \newpage
 \section{提案手法}

@@ -204,60 +204,17 @@ DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}ではそれに対する�
 これにより，ドローン画像の3次元再構成の活用がしやすくなる．
 これを実現するために，学習用画像から不要な物体をCLIP\cite{DBLP:journals/corr/abs-2103-00020}等のマルチモーダル画像分類器で同定し，学習に使用する画像から削除することで（図2），再構成させる自由視点画像の最適化を試みる．
 
-1.3DGS\cite{kerbl3Dgaussians}
-2.DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}
-3.ravi2024sam2\cite{ravi2024sam2}
-4.InpaintAnything\cite{yu2023inpaint}
-5.CLIP\cite{DBLP:journals/corr/abs-2103-00020}
-6.LaMa\cite{suvorov2021resolution}
-7.MVinpainter\cite{cao2024mvinpainter}
-
-\begin{table}[b]
-  \centering
-  \caption{Simingshanデータセットにおける各手法の性能比較}
-  \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
-  \begin{tabular}{l
-                  S[table-format=2.2]
-                  S[table-format=1.3]
-                  S[table-format=1.3]}
-    \toprule
-    Method
-      & \multicolumn{3}{c}{Simingshan} \\
-    \cmidrule(lr){2-4}
-      & {PSNR\(\uparrow\)} & {SSIM\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
-    \midrule
-    NeRF\cite{mildenhall2020nerfrepresentingscenesneural}                 & 19.07 & 0.417 & 0.267 \\
-    3DGS\cite{kerbl3Dgaussians}          & 19.68 & 0.476 & 0.254 \\
-    DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}                  & 22.76 & 0.759 & 0.152 \\
-    Ours                        & 22.35 & 0.744 & 0.174 \\
-    \bottomrule
-  \end{tabular}
-  \label{tab:metrics}
-\end{table}
-
-
-\begin{figure}[b]     % !b でコラム下部
-  \centering
-  \begin{subfigure}[t]{0.48\columnwidth}
-    \centering
-    \includegraphics[width=\linewidth]{img-for-paper/fig1_a.jpg}
-    \caption{3DGS\cite{kerbl3Dgaussians}で作成\\車が動いている場面を表現できない}
-    \label{fig:3dgs}
-  \end{subfigure}\hfill
-  \begin{subfigure}[t]{0.48\columnwidth}
-    \centering
-    \includegraphics[width=\linewidth]{img-for-paper/fig1_b.jpg}
-    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で生成\\動体を無視して表現できる}
-    \label{fig:prior}
-  \end{subfigure}
-  \vspace{1ex}
-  \caption{動的シーンにおける自由視点画像生成の例}
-  \label{fig:comparison}
-\end{figure}
-\newpage
-
 \subsection{本研究の構成}
-本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...本論文は次のように構成される。2章では...
+本論文は次のように構成される。
+第一章では本研究の概要を説明する。
+第二章では研究背景を説明する。
+第三章では提案手法を説明する。
+第四章では評価実験と考察を行う。
+第五章ではおわりにを述べる。
+第六章では参考文献を示す。
+第七章では謝辞を述べる。
+第八章では付録を示す。
+
 
 \newpage
 \section{研究背景}
@@ -342,7 +299,7 @@ SAM2の最大の特徴は，大規模データセットで学習された汎用�
 \end{figure}
 
 \subsubsection{映り込みに対応した自由視点画像生成技術}
-
+Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法では，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いて各視点の学習用画像のセグメントを得る．学習過程において，動いているセグメントを段階的に学習から除外することで，動的な不要物体を考慮しない再構成が可能となる．評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている．
 \subsection{現状の課題}
 
 \newpage
@@ -360,9 +317,56 @@ SAM2の最大の特徴は，大規模データセットで学習された汎用�
 
 \newpage
 \section{おわりに}
-おおおおおおおおおおおおお
+おわりにです．いったんいかに使えそうなものを非難させておくこととする．
+
+\begin{table}[b]
+  \centering
+  \caption{Simingshanデータセットにおける各手法の性能比較}
+  \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
+  \begin{tabular}{l
+                  S[table-format=2.2]
+                  S[table-format=1.3]
+                  S[table-format=1.3]}
+    \toprule
+    Method
+      & \multicolumn{3}{c}{Simingshan} \\
+    \cmidrule(lr){2-4}
+      & {PSNR\(\uparrow\)} & {SSIM\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
+    \midrule
+    NeRF\cite{mildenhall2020nerfrepresentingscenesneural}                 & 19.07 & 0.417 & 0.267 \\
+    3DGS\cite{kerbl3Dgaussians}          & 19.68 & 0.476 & 0.254 \\
+    DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}                  & 22.76 & 0.759 & 0.152 \\
+    Ours                        & 22.35 & 0.744 & 0.174 \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:metrics}
+\end{table}
+
+
+\begin{figure}[b]     % !b でコラム下部
+  \centering
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig1_a.jpg}
+    \caption{3DGS\cite{kerbl3Dgaussians}で作成\\車が動いている場面を表現できない}
+    \label{fig:3dgs}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/fig1_b.jpg}
+    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で生成\\動体を無視して表現できる}
+    \label{fig:prior}
+  \end{subfigure}
+  \vspace{1ex}
+  \caption{動的シーンにおける自由視点画像生成の例}
+  \label{fig:comparison}
+\end{figure}
+\newpage
+
+
 \subsection{結論}
 \subsection{今後の課題}
+課題は．．．．
 
 
 % 手動で参考文献見出しを配置

@@ -95,18 +95,17 @@
 
 % セクション書式設定
 % セクション書式設定（見出しをゴシック体に）
+\setcounter{secnumdepth}{3}  % subsubsectionまで番号を付ける
 \titleformat{\section}
   {\sffamily\fontsize{18\ascpt}{18truept}\bfseries}
   {\thesection}{1em}{}
 \titleformat{\subsection}
   {\sffamily\fontsize{14\ascpt}{14truept}\bfseries}
   {\thesubsection}{1em}{}
-% ★ subsubsection の設定を変更 ★
+% subsubsection の設定（番号を表示）
 \titleformat{\subsubsection}
   {\sffamily\fontsize{12\ascpt}{12truept}\bfseries}
-  {}          % 番号（空）
-  {0pt}       % ★ ここを 0pt にする ★
-  {}
+  {\thesubsubsection}{1em}{}
 
 
 
@@ -322,6 +321,83 @@ Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussians
 \newpage
 \section{提案手法}
 \subsection{不要物同定アルゴリズム}
+
+本手法では，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習において，動的オブジェクトと静止オブジェクトを区別して不要物を同定する．
+動的オブジェクトは学習中の損失情報から検出し，静止オブジェクトは事前学習済みのセグメンテーションモデルを用いて検出する．
+両者の情報を統合することで，より包括的な不要物同定を実現する．
+
+\subsubsection{動的オブジェクトの検出}
+
+動的オブジェクトは，3D Gaussian Splattingの学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される．
+本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，各フレームにおけるインスタンスレベルの損失分布を分析することで動的オブジェクトを同定する．
+
+具体的には，学習開始から一定のiteration（本実験では500 iteration）経過後，各フレームのレンダリング結果と正解画像との間のL1損失およびSSIM損失を計算する．
+これらの損失を正規化し，以下の式で統合損失を算出する：
+\begin{equation}
+L_{combined} = \frac{4 \cdot L_{L1}^{norm} + L_{SSIM}^{norm}}{5}
+\end{equation}
+ここで，$L_{L1}^{norm}$および$L_{SSIM}^{norm}$は，それぞれL1損失とSSIM損失を0-1の範囲に正規化した値である．
+
+次に，各フレームに与えられたインスタンスセグメンテーションマスクを用いて，インスタンス単位での損失を集計する．
+インスタンス$i$の損失$L_i$は，以下の式で計算される：
+\begin{equation}
+L_i = \frac{\sum_{p \in M_i} L_{combined}(p)}{|M_i|}
+\end{equation}
+ここで，$M_i$はインスタンス$i$のマスク領域，$|M_i|$はその画素数である．
+
+各インスタンスの損失値をヒートマップとして可視化し，動的閾値$T_{dynamic}$を以下の式で決定する：
+\begin{equation}
+T_{dynamic} = \mu + \sigma + \alpha \cdot \sigma \cdot \frac{I_{\max} - I_{current}}{I_{\max}}
+\end{equation}
+ここで，$\mu$と$\sigma$はヒートマップの平均値と標準偏差，$I_{current}$と$I_{\max}$は現在のiterationと最大iteration，$\alpha$は調整パラメータである．
+この閾値により，学習の進行に応じて動的オブジェクトの検出感度を調整する．
+
+損失値が閾値を超えるインスタンスは動的オブジェクトとして判定され，そのマスクが除外対象として記録される．
+学習の最終iterationにおいて，すべての学習フレームに対する除外マスクを保存する．
+
+\subsubsection{静止オブジェクトの検出とフィルタリング}
+
+静止オブジェクトの検出には，Segment Anything Model 3 (SAM3)\cite{carion2025sam3segmentconcepts}を用いる．
+SAM3は，テキストプロンプト（本実験では"car"）に基づいて動画シーケンス全体から対象オブジェクトを追跡・セグメンテーションする．
+各フレームにおいて，検出されたオブジェクトのマスク，バウンディングボックス，信頼度スコアが出力される．
+
+しかし，SAM3は動的・静止を区別せずにすべての車を検出するため，動的オブジェクトと静止オブジェクトを区別する必要がある．
+本手法では，3.1.1節で検出された動的オブジェクトのマスクとSAM3の検出結果を比較し，重複するオブジェクトを除外する．
+
+具体的には，SAM3で検出された各オブジェクト$o_j$について，そのマスク$M_{SAM3}(o_j)$と動的オブジェクトのマスク$M_{dynamic}$との重複率$R_{overlap}$を以下の式で計算する：
+\begin{equation}
+R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
+\end{equation}
+ここで，$|M_{SAM3}(o_j) \cap M_{dynamic}|$は重複領域の画素数，$|M_{SAM3}(o_j)|$はSAM3オブジェクトの総画素数である．
+
+重複率が閾値$T_{overlap}$（本実験では0.5）を超える場合，そのオブジェクトは動的オブジェクトとして既に検出されていると判定し，SAM3の検出結果から除外する．
+これにより，静止オブジェクトのみが残る．
+
+\subsubsection{不要物の除去}
+
+同定された不要物（動的オブジェクトおよび静止オブジェクト）は，画像インペインティング技術を用いて除去する．
+本手法では，Large Mask Inpainting (LaMa)\cite{suvorov2021resolution}を使用する．
+
+静止オブジェクトのマスクは，境界の拡張処理を適用してからインペインティングを行う．
+具体的には，形態学的な膨張処理（カーネルサイズ15ピクセル）により，マスクの境界を拡張し，より自然な補完結果を得る．
+
+各オブジェクトは順次処理され，最終的にすべての不要物が除去された画像が生成される．
+この画像を3D Gaussian Splattingの学習データとして使用することで，動的オブジェクトの影響を受けない高品質な3Dシーン再構成が可能となる．
+
+\subsubsection{アルゴリズムの全体フロー}
+
+本手法の全体フローを以下に示す：
+
+\begin{enumerate}
+\item \textbf{初期学習}: 元の画像データセットを用いてDroneSplatを学習し，動的オブジェクトのマスクを取得する（3.1.1節）．
+\item \textbf{オブジェクト検出}: SAM3を用いてすべての車を検出する．
+\item \textbf{マスクフィルタリング}: SAM3の検出結果と動的オブジェクトのマスクを比較し，重複するオブジェクトを除外する（3.1.2節）．
+\item \textbf{インペインティング}: フィルタリング後の静止オブジェクトマスクに対してLaMaを適用し，不要物を除去した画像を生成する（3.1.3節）．
+\item \textbf{再学習}: インペインティング後の画像を用いてDroneSplatを再学習し，最終的な3Dシーン再構成を行う．
+\end{enumerate}
+
+このフローにより，動的オブジェクトと静止オブジェクトの両方を効果的に除去し，高品質な3Dシーン再構成を実現する．
+
 \subsection{拡散モデルによる削除部の補完}
 
 \newpage

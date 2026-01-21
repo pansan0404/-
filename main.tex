@@ -4,6 +4,7 @@
 % --------------
 \usepackage{amsmath}                  % 数式環境のサポート
 \usepackage{amsfonts}                 % 数学フォント
+\usepackage{etoolbox}                  % 環境のフック用
 \usepackage{caption}                  % 図表キャプションの設定
 \usepackage[symbol,hang,flushmargin]{footmisc} % 脚注記号とマージン調整
 \renewcommand{\thefootnote}{\fnsymbol{footnote}} % 脚注を記号に
@@ -42,8 +43,15 @@
 % \usepackage[utf8]{inputenc} % 入力エンコーディング
 % \usepackage[T1]{fontenc}    % 出力エンコーディング
 \usepackage{booktabs}       % 表の罫線
+\usepackage{fancyhdr}       % ページスタイルのカスタマイズ
 
-\pagestyle{empty}           % ヘッダー・フッターなし
+% ページ番号を表示（フッター中央、下に配置）
+\pagestyle{fancy}
+\fancyhf{}  % 既存の設定をクリア
+\fancyfoot[C]{\raisebox{-20mm}{\thepage}}  % フッター中央にページ番号、下に配置
+\setlength{\footskip}{10mm}  % フッターの位置を調整
+\renewcommand{\footrulewidth}{0pt}  % フッターの罫線を非表示
+\renewcommand{\headrulewidth}{0pt}  % ヘッダーの罫線を非表示
 
 \usepackage{bm}             % 太字数学記号
 
@@ -88,6 +96,22 @@
 % カラム間隔設定
 \setlength{\columnsep}{20truept}
 % 縦は49行であり，14truept が 1行 の高さ
+
+% 文字間隔設定（日本語の文字間を狭くする）
+\setlength{\kanjiskip}{0pt plus 0.1pt minus 0.1pt}  % 漢字間のスペース
+\setlength{\xkanjiskip}{0.25em plus 0.15em minus 0.08em}  % 漢字と英数字の間のスペース
+
+% 数式と本文の間のマージン設定
+% 文書開始後に設定することで、amsmathパッケージの設定を上書き
+\AtBeginDocument{%
+  \setlength{\abovedisplayskip}{21pt}%
+  \setlength{\belowdisplayskip}{21pt}%
+  \setlength{\abovedisplayshortskip}{21pt}%
+  \setlength{\belowdisplayshortskip}{21pt}%
+}
+% equation環境の前後にスペースを追加
+\BeforeBeginEnvironment{equation}{\vspace{10.5pt}}
+\AfterEndEnvironment{equation}{\vspace{10.5pt}}
 
 % セクション書式設定
 % セクション書式設定（見出しをゴシック体に）
@@ -190,7 +214,6 @@ DroneSplatではそれに対する対応が行われている．
 
 \newpage
 \section{はじめに}
-いいいいいいいいいいいいいいいいいいいいい
 \subsection{本研究の概要}
 環境の画像から自由視点画像を得る技術は，近年のAIの発達によって急激に発展している．
 3D Gaussian Splatting（3DGS） \cite{kerbl3Dgaussians}はその代表的な例である．
@@ -299,7 +322,31 @@ SAM2の最大の特徴は，大規模データセットで学習された汎用�
 \end{figure}
 
 \subsubsection{映り込みに対応した自由視点画像生成技術}
-Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法では，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いて各視点の学習用画像のセグメントを得る．学習過程において，動いているセグメントを段階的に学習から除外することで，動的な不要物体を考慮しない再構成が可能となる．評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている（図\ref{fig:comparison}）．
+Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法は，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いた適応的な動的物体マスキング（Adaptive dynamic-object masking）を特徴とする．
+
+DroneSplatの学習プロセスは，2段階の学習フェーズから構成される．第1段階（Pre-training）では，SAM2を用いて各学習画像$I_k$（$k = 1, \ldots, N$はフレーム番号）からインスタンスレベルのセグメンテーションマスク$\mathcal{M}_k = \{M_k^1, M_k^2, \ldots, M_k^{S_k}\}$を取得する．ここで，$S_k$はフレーム$k$におけるセグメント数である．
+
+次に，3DGSの学習において，動的物体を含むセグメントを段階的に除外する適応的マスキングを適用する．具体的には，学習iteration $t$における損失関数$\mathcal{L}_t$を以下のように定義する：
+\begin{equation}
+\mathcal{L}_t = \sum_{k=1}^{N} \sum_{p \in \mathcal{P}_k} w_t(p) \cdot \ell(\hat{I}_k(p), I_k(p))
+\end{equation}
+ここで，$\hat{I}_k(p)$はフレーム$k$のピクセル$p$におけるレンダリング結果，$I_k(p)$は正解画像，$\ell(\cdot, \cdot)$はL1損失とSSIM損失の組み合わせ，$\mathcal{P}_k$はフレーム$k$の全ピクセル集合である．重み$w_t(p)$は，iteration $t$におけるピクセル$p$の動的物体マスク$\mathcal{M}_t^{dynamic}(p)$に基づいて以下のように決定される：
+\begin{equation}
+w_t(p) = \begin{cases}
+0 & \text{if } \mathcal{M}_t^{dynamic}(p) = 1 \\
+1 & \text{otherwise}
+\end{cases}
+\end{equation}
+
+動的物体マスク$\mathcal{M}_t^{dynamic}$は，各iterationにおいて更新される．初期iterationでは全セグメントを学習対象とするが，学習が進むにつれて，複数フレーム間で一貫性のない再構成誤差を示すセグメントを動的物体として同定し，段階的に除外する．具体的には，セグメント$M_k^i$の動的度合い$D_k^i$を以下の式で計算する：
+\begin{equation}
+D_k^i = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \frac{\ell(\hat{I}_k(p), I_k(p))}{\max_{q \in \mathcal{P}_k} \ell(\hat{I}_k(q), I_k(q))}
+\end{equation}
+ここで，$|M_k^i|$はセグメント$M_k^i$の画素数である．動的度合いが閾値$\tau_{dynamic}$を超えるセグメントは動的物体として判定され，その後の学習から除外される．
+
+第2段階（Main training）では，第1段階で得られた動的物体マスクを用いて，動的物体を除外した画像に対して3DGSを再学習する．これにより，動的な不要物体を考慮しない高品質な3Dシーン再構成が可能となる．
+
+評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている（図\ref{fig:comparison}）．
 
 \begin{figure}[htbp]
   \centering
@@ -360,11 +407,11 @@ Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussians
 
 
 
-本手法では，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習において，動的オブジェクトと静止オブジェクトを区別して不要物を同定する．
+本手法では，3DGS\cite{kerbl3Dgaussians}の学習において，動的オブジェクトと静止オブジェクトを区別して不要物を同定する．
 動的オブジェクトは学習中の損失情報から検出し，静止オブジェクトは事前学習済みのセグメンテーションモデルを用いて検出する．
 両者の情報を統合することで，より包括的な不要物同定を実現する．
 
-本手法の全体フローを以下に示す：
+本手法の学習の流れを以下に示す：
 
 \begin{enumerate}
 \item \textbf{初期学習}: 元の画像データセットを用いてDroneSplatを学習し，動的オブジェクトのマスクを取得する（3.1.2節）．
@@ -374,7 +421,17 @@ Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussians
 \item \textbf{再学習}: インペインティング後の画像を用いてDroneSplatを再学習し，最終的な3Dシーン再構成を行う．
 \end{enumerate}
 
-このフローにより，動的オブジェクトと静止オブジェクトの両方を効果的に除去し，高品質な3Dシーン再構成を実現する．
+このフローにより，動的オブジェクトと静止オブジェクトの両方を効果的に除去し，高品質な3Dシーン再構成を実現する（図\ref{fig:overview}）．
+
+\vspace{10pt}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\columnwidth]{img-for-paper/overview.png}
+  \caption{提案手法の全体フロー}
+  \label{fig:overview}
+\end{figure}
+\vspace{10pt}
+
 
 \subsubsection{動的オブジェクトの検出}
 動的オブジェクトは，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される． 

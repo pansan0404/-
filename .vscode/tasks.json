@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "LaTeX: コンパイル",
+            "type": "shell",
+            "command": "cd '${workspaceFolder}' && platex -interaction=nonstopmode main.tex > /dev/null 2>&1 && pbibtex main > /dev/null 2>&1 && platex -interaction=nonstopmode main.tex > /dev/null 2>&1 && platex -interaction=nonstopmode main.tex > /dev/null 2>&1 && dvipdfmx main.dvi > /dev/null 2>&1 && echo 'コンパイル完了'",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        }
+    ]
+}

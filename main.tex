@@ -1,4 +1,4 @@
-\documentclass[a4paper,autodetect-engine,ja=standard,9pt]{bxjsarticle}
+\documentclass[a4paper,dvipdfmx,ja=standard,9pt]{bxjsarticle}
 % --------------
 % パッケージ
 % --------------
@@ -8,7 +8,7 @@
 \usepackage[symbol,hang,flushmargin]{footmisc} % 脚注記号とマージン調整
 \renewcommand{\thefootnote}{\fnsymbol{footnote}} % 脚注を記号に
 \setcounter{footnote}{0}
-\usepackage[dvipdfmx]{graphicx}       % 画像取り込み (dvipdfmx ドライバ)
+\usepackage{graphicx}       % 画像取り込み
 \usepackage{grffile}                  % 拡張ファイル名の対応
 \usepackage{lipsum}                   % ダミーテキスト
 \usepackage[numbers]{natbib}          % 数値型引用
@@ -24,7 +24,7 @@
   \usepackage{fontspec}
   \usepackage{xeCJK}
   % 本文用の明朝体
-  \setCJKmainfont{Noto Serif JP}
+  \setCJKmainfont{Hiragino Mincho ProN}
   % 見出し用のゴシック体（bxjsarticleが自動的に見出しに適用）
   \setCJKsansfont{Hiragino Kaku Gothic ProN}
   \setCJKmonofont{Hiragino Kaku Gothic ProN}
@@ -34,18 +34,14 @@
 % \usepackage[dvipdfmx]{color}
 
 % ここからコピペ: 画像と色設定
-\usepackage{graphicx}    % 画像取り込み
 \usepackage{color}       % 色指定
 
 \usepackage{multirow}    % 表中の複数行セル
-
-\graphicspath{images}    % 画像パス設定
 
 % XeLaTeXでは不要（UTF-8を直接扱える）
 % \usepackage[utf8]{inputenc} % 入力エンコーディング
 % \usepackage[T1]{fontenc}    % 出力エンコーディング
 \usepackage{booktabs}       % 表の罫線
-\usepackage{graphicx}       % 重複読み込み（意図的）
 
 \pagestyle{empty}           % ヘッダー・フッターなし
 
@@ -106,6 +102,14 @@
 \titleformat{\subsubsection}
   {\sffamily\fontsize{12\ascpt}{12truept}\bfseries}
   {\thesubsubsection}{1em}{}
+
+% セクション間のマージン設定
+% \titlespacing{command}{left}{before-sep}{after-sep}[right-sep]
+% before-sep: セクションタイトル前のスペース（前のセクションの末尾の空白として機能）
+% after-sep: セクションタイトル直後のスペース
+\titlespacing{\section}{0pt}{60truept}{6truept}
+\titlespacing{\subsection}{0pt}{40truept}{4truept}
+\titlespacing{\subsubsection}{0pt}{15truept}{3truept}
 
 
 
@@ -186,8 +190,8 @@ DroneSplatではそれに対する対応が行われている．
 
 \newpage
 \section{はじめに}
+いいいいいいいいいいいいいいいいいいいいい
 \subsection{本研究の概要}
-
 環境の画像から自由視点画像を得る技術は，近年のAIの発達によって急激に発展している．
 3D Gaussian Splatting（3DGS） \cite{kerbl3Dgaussians}はその代表的な例である．
 ドローンを用いて屋外撮影をする場合の固有の課題が発生するが，
@@ -322,12 +326,43 @@ Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussians
 \newpage
 \section{提案手法}
 \subsection{不要物同定アルゴリズム}
+本節では，映り込みに対応した自由視点画像生成技術において，不要物を同定することを考える．
+本研究における不要物とは以下の2つである：
+\begin{enumerate}
+\item 動的な物体
+\item 静止しているがユーザが不要と判断した物体
+\end{enumerate}
+
+動的な物体の同定は，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で対応が行われている．
+しかし，静止していてかつユーザが不要と判断した物体を同定することはできない．
+また，DroneSplatにおける動的な物体の検出も学習画像によって間違いが起こることも多い（図\ref{fig:dynamic_detection}）
+
+\vspace{10pt}
+\begin{figure}[htbp]
+  \centering
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/2411006_18_001.jpg}
+    \caption{学習用画像}
+    \label{fig:learning_image}
+  \end{subfigure}\hfill
+  \begin{subfigure}[t]{0.48\columnwidth}
+    \centering
+    \includegraphics[width=\linewidth]{img-for-paper/2411006_18_001_dronesplat_mask.png}
+    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}によって動いていると判定されたオブジェクト}
+    \label{fig:dronesplat_mask}
+  \end{subfigure}
+  \vspace{1ex}
+  \caption{学習用画像には，動いている車両と背景が含まれている（図\ref{fig:learning_image}）．DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}によって動いていると判定されたオブジェクトを（図\ref{fig:dronesplat_mask}）に示す．動的な物体の物体漏れが発生する．また，動いていないはずの背景も動いていると誤判定されるケースもある．  }
+  \label{fig:dynamic_detection}
+\end{figure}
+\vspace{10pt}
+
+
 
 本手法では，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習において，動的オブジェクトと静止オブジェクトを区別して不要物を同定する．
 動的オブジェクトは学習中の損失情報から検出し，静止オブジェクトは事前学習済みのセグメンテーションモデルを用いて検出する．
 両者の情報を統合することで，より包括的な不要物同定を実現する．
-
-\subsubsection{アルゴリズムの全体フロー}
 
 本手法の全体フローを以下に示す：
 
@@ -342,8 +377,7 @@ Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussians
 このフローにより，動的オブジェクトと静止オブジェクトの両方を効果的に除去し，高品質な3Dシーン再構成を実現する．
 
 \subsubsection{動的オブジェクトの検出}
-
-動的オブジェクトは，3D Gaussian Splattingの学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される．
+動的オブジェクトは，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される． 
 本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，各フレームにおけるインスタンスレベルの損失分布を分析することで動的オブジェクトを同定する．
 
 具体的には，学習開始から一定のiteration（本実験では500 iteration）経過後，各フレームのレンダリング結果と正解画像との間のL1損失およびSSIM損失を計算する．
@@ -413,7 +447,7 @@ R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
 \subsubsection{学習用画像中に一貫性を持たせた拡散モデルの有効性の検証}
 
 \subsubsection{動的な不要物の除去における拡散モデルの必要性の検証}
-映り込みに対応した自由視点画像生成技術の先行研究\cite{tang2025dronesplat3dgaussiansplatting}においては，動的物体を学習から削除している．一方
+映り込みに対応した自由視点画像生成技術のDroneSplat\cite{tang2025dronesplat3dgaussiansplatting}においては，動的物体を学習から削除している．一方
 
 
 \newpage

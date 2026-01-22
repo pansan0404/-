@@ -5,6 +5,7 @@
 \usepackage{amsmath}                  % 数式環境のサポート
 \usepackage{amsfonts}                 % 数学フォント
 \usepackage{etoolbox}                  % 環境のフック用
+\usepackage{enumitem}                  % 箇条書きのカスタマイズ
 \usepackage{caption}                  % 図表キャプションの設定
 \usepackage[symbol,hang,flushmargin]{footmisc} % 脚注記号とマージン調整
 \renewcommand{\thefootnote}{\fnsymbol{footnote}} % 脚注を記号に
@@ -112,6 +113,17 @@
 % equation環境の前後にスペースを追加
 \BeforeBeginEnvironment{equation}{\vspace{10.5pt}}
 \AfterEndEnvironment{equation}{\vspace{10.5pt}}
+
+% equation環境内の数式フォントサイズを変更（環境内のみ）
+\let\oldequation\equation
+\let\endoldequation\endequation
+\renewenvironment{equation}{%
+  \oldequation
+  \Large  % 数式環境内でのみフォントサイズを変更（14.4pt相当）
+}{%
+  \endoldequation
+}
+
 
 % セクション書式設定
 % セクション書式設定（見出しをゴシック体に）
@@ -363,26 +375,40 @@ D_k^i = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \frac{\ell(\hat{I}_k(p), I_k(p))}{\
     \label{fig:prior}
   \end{subfigure}
   \vspace{1ex}
-  \caption{動的シーンにおける自由視点画像生成の例}
+  \caption{動的なシーンにおける自由視点画像生成の例}
   \label{fig:comparison}
 \end{figure}
 \newpage
 
 \subsection{現状の課題}
+自由視点画像生成技術の研究においては，以下の4つの領域が研究の中心となっている：
+\begin{enumerate}[label=(\arabic*)]
+\item 高精細に再構成する
+\item 計算量を削減する
+\item レンダリング速度を高速化する
+\item 人や物の動きへ対応する
+\end{enumerate}
+これらを実用レベルで実現できるモデルが理想である．本研究は，(4) 人や物の動きへ対応するための研究である．
 
-\newpage
-\section{提案手法}
-\subsection{不要物同定アルゴリズム}
+現状，多くの研究は(1)〜(3)の領域で進められている．例えば，3D Gaussian Splatting\cite{kerbl3Dgaussians}は高精細な再構成と高速なレンダリングを実現し，NeRF\cite{mildenhall2020nerfrepresentingscenesneural}は高品質な3次元再構成を可能にした．しかし，これらの手法は動的な物体が含まれるシーンにおいて，再構成精度の低下やアーティファクトの発生などの問題を抱えている．
+
+一方，(4) 人や物の動きへ対応する研究は，動的物体の検出や除去，動的なシーンの再構成など，複雑な課題を伴うため，実用化まで至っている手法は限られている．特に，ドローンや屋外環境での撮影においては，動的な物体（人，車両など）や不要な静止物体（看板，電柱など）が写り込むことが多く，これらを適切に処理することが実用化の鍵となる．
+
 本節では，映り込みに対応した自由視点画像生成技術において，不要物を同定することを考える．
 本研究における不要物とは以下の2つである：
-\begin{enumerate}
+\begin{enumerate}[label=(\arabic*)]
 \item 動的な物体
 \item 静止しているがユーザが不要と判断した物体
 \end{enumerate}
 
 動的な物体の同定は，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で対応が行われている．
 しかし，静止していてかつユーザが不要と判断した物体を同定することはできない．
-また，DroneSplatにおける動的な物体の検出も学習画像によって間違いが起こることも多い（図\ref{fig:dynamic_detection}）
+また，DroneSplatにおける動的な物体の検出も学習画像によって間違いが起こることも多い（図\ref{fig:dynamic_detection}）．
+具体的には，動的物体の検出漏れや，静止している背景の誤検出などが発生し，完全な不要物の除去が困難である．
+
+さらに，マップ作成や3Dモデリングなどの実用応用においては，不要物を削除する前処理に多くの時間と労力を要するのが現状である．従来の手法では，手動での不要物の指定や，複雑な前処理パイプラインの構築が必要であり，実用化の障壁となっている．
+
+本研究が結実することで，3Dモデリングの工数が短縮され，前処理の必要がない，世界に類を見ない実用的な自由視点画像生成モデルとなることが期待される．
 
 \vspace{10pt}
 \begin{figure}[htbp]
@@ -396,46 +422,44 @@ D_k^i = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \frac{\ell(\hat{I}_k(p), I_k(p))}{\
   \begin{subfigure}[t]{0.48\columnwidth}
     \centering
     \includegraphics[width=\linewidth]{img-for-paper/2411006_18_001_dronesplat_mask.png}
-    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}によって動いていると判定されたオブジェクト}
+    \caption{DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}によって動いていると判定された物体}
     \label{fig:dronesplat_mask}
   \end{subfigure}
   \vspace{1ex}
-  \caption{学習用画像には，動いている車両と背景が含まれている（図\ref{fig:learning_image}）．DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}によって動いていると判定されたオブジェクトを（図\ref{fig:dronesplat_mask}）に示す．動的な物体の物体漏れが発生する．また，動いていないはずの背景も動いていると誤判定されるケースもある．  }
+  \caption{学習用画像には，動いている車両と背景が含まれている（図\ref{fig:learning_image}）．DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}によって動いていると判定された物体を（図\ref{fig:dronesplat_mask}）に示す．動的な物体の物体漏れが発生する．また，動いていないはずの背景も動いていると誤判定されるケースもある．  }
   \label{fig:dynamic_detection}
 \end{figure}
 \vspace{10pt}
 
-
-
-本手法では，3DGS\cite{kerbl3Dgaussians}の学習において，動的オブジェクトと静止オブジェクトを区別して不要物を同定する．
-動的オブジェクトは学習中の損失情報から検出し，静止オブジェクトは事前学習済みのセグメンテーションモデルを用いて検出する．
+\newpage
+\section{提案手法}
+本手法では，3DGS\cite{kerbl3Dgaussians}の学習において，動的物体と静止物体を区別して不要物を同定する．
+動的物体は学習中の損失情報から検出し，静止物体は事前学習済みのセグメンテーションモデルを用いて検出する．
 両者の情報を統合することで，より包括的な不要物同定を実現する．
 
 本手法の学習の流れを以下に示す：
 
 \begin{enumerate}
-\item \textbf{初期学習}: 元の画像データセットを用いてDroneSplatを学習し，動的オブジェクトのマスクを取得する（3.1.2節）．
-\item \textbf{オブジェクト検出}: SAM3を用いてすべての車を検出する．
-\item \textbf{マスクフィルタリング}: SAM3の検出結果と動的オブジェクトのマスクを比較し，重複するオブジェクトを除外する（3.1.3節）．
-\item \textbf{インペインティング}: フィルタリング後の静止オブジェクトマスクに対してLaMaを適用し，不要物を除去した画像を生成する（3.1.4節）．
+\item \textbf{初期学習}: 元の画像データセットを用いてDroneSplatを学習し，動的物体のマスクを取得する（3.1節）．
+\item \textbf{物体検出}: SAM3を用いてすべての不要物体を検出する．
+\item \textbf{マスクフィルタリング}: SAM3の検出結果と動的物体のマスクを比較し，重複する物体を除外する（3.2節）．
+\item \textbf{インペインティング}: フィルタリング後の静止物体マスクに対してLaMaを適用し，不要物を除去した画像を生成する（3.3節）．
 \item \textbf{再学習}: インペインティング後の画像を用いてDroneSplatを再学習し，最終的な3Dシーン再構成を行う．
 \end{enumerate}
 
-このフローにより，動的オブジェクトと静止オブジェクトの両方を効果的に除去し，高品質な3Dシーン再構成を実現する（図\ref{fig:overview}）．
+この流れにより，動的物体と静止物体の両方を効果的に除去し，高品質な3Dシーン再構成を実現する（図\ref{fig:overview}）．
 
 \vspace{10pt}
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.9\columnwidth]{img-for-paper/overview.png}
-  \caption{提案手法の全体フロー}
+  \includegraphics[width=0.8\columnwidth]{img-for-paper/overview.png}
+  \caption{提案手法の流れ図}
   \label{fig:overview}
 \end{figure}
 \vspace{10pt}
-
-
-\subsubsection{動的オブジェクトの検出}
-動的オブジェクトは，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される． 
-本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，各フレームにおけるインスタンスレベルの損失分布を分析することで動的オブジェクトを同定する．
+\subsection{動的物体の検出}
+動的物体は，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される． 
+本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，各フレームにおけるインスタンスレベルの損失分布を分析することで動的物体を同定する．
 
 具体的には，学習開始から一定のiteration（本実験では500 iteration）経過後，各フレームのレンダリング結果と正解画像との間のL1損失およびSSIM損失を計算する．
 これらの損失を正規化し，以下の式で統合損失を算出する：
@@ -456,55 +480,149 @@ L_i = \frac{\sum_{p \in M_i} L_{combined}(p)}{|M_i|}
 T_{dynamic} = \mu + \sigma + \alpha \cdot \sigma \cdot \frac{I_{\max} - I_{current}}{I_{\max}}
 \end{equation}
 ここで，$\mu$と$\sigma$はヒートマップの平均値と標準偏差，$I_{current}$と$I_{\max}$は現在のiterationと最大iteration，$\alpha$は調整パラメータである．
-この閾値により，学習の進行に応じて動的オブジェクトの検出感度を調整する．
+この閾値により，学習の進行に応じて動的物体の検出感度を調整する．
 
-損失値が閾値を超えるインスタンスは動的オブジェクトとして判定され，そのマスクが除外対象として記録される．
+損失値が閾値を超えるインスタンスは動的物体として判定され，そのマスクが除外対象として記録される．
 学習の最終iterationにおいて，すべての学習フレームに対する除外マスクを保存する．
 
-\subsubsection{静止オブジェクトの検出とフィルタリング}
+\subsection{静止物体の検出とフィルタリング}
 
-静止オブジェクトの検出には，Segment Anything Model 3 (SAM3)\cite{carion2025sam3segmentconcepts}を用いる．
-SAM3は，テキストプロンプト（本実験では"car"）に基づいて動画シーケンス全体から対象オブジェクトを追跡・セグメンテーションする．
-各フレームにおいて，検出されたオブジェクトのマスク，バウンディングボックス，信頼度スコアが出力される．
+静止物体の検出には，Segment Anything Model 3 (SAM3)\cite{carion2025sam3segmentconcepts}を用いる．
+SAM3は，テキストプロンプト（本実験では"car"）に基づいて動画シーケンス全体から対象物体を追跡・セグメンテーションする．
+各フレームにおいて，検出された物体のマスク，バウンディングボックス，信頼度スコアが出力される．
 
-しかし，SAM3は動的・静止を区別せずにすべての車を検出するため，動的オブジェクトと静止オブジェクトを区別する必要がある．
-本手法では，3.1.2節で検出された動的オブジェクトのマスクとSAM3の検出結果を比較し，重複するオブジェクトを除外する．
+しかし，SAM3は動的・静止を区別せずにすべての不要物体を検出するため，動的物体と静止物体を区別する必要がある．
+本手法では，3.1節で検出された動的物体のマスクとSAM3の検出結果を比較し，重複する物体を除外する．
 
-具体的には，SAM3で検出された各オブジェクト$o_j$について，そのマスク$M_{SAM3}(o_j)$と動的オブジェクトのマスク$M_{dynamic}$との重複率$R_{overlap}$を以下の式で計算する：
+具体的には，SAM3で検出された各物体$o_j$について，そのマスク$M_{SAM3}(o_j)$と動的物体のマスク$M_{dynamic}$との重複率$R_{overlap}$を以下の式で計算する：
 \begin{equation}
 R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
 \end{equation}
-ここで，$|M_{SAM3}(o_j) \cap M_{dynamic}|$は重複領域の画素数，$|M_{SAM3}(o_j)|$はSAM3オブジェクトの総画素数である．
+ここで，$|M_{SAM3}(o_j) \cap M_{dynamic}|$は重複領域の画素数，$|M_{SAM3}(o_j)|$はSAM3で検出された物体の総画素数である．
 
-重複率が閾値$T_{overlap}$（本実験では0.5）を超える場合，そのオブジェクトは動的オブジェクトとして既に検出されていると判定し，SAM3の検出結果から除外する．
-これにより，静止オブジェクトのみが残る．
+重複率が閾値$T_{overlap}$（本実験では0.5）を超える場合，その物体は動的物体として既に検出されていると判定し，SAM3の検出結果から除外する．
+これにより，静止物体のみが残る．
 
-\subsubsection{不要物の除去}
+\subsection{不要物の除去}
 
-同定された不要物（動的オブジェクトおよび静止オブジェクト）は，画像インペインティング技術を用いて除去する．
+同定された不要物（動的物体および静止物体）は，画像インペインティング技術を用いて除去する．
 本手法では，Large Mask Inpainting (LaMa)\cite{suvorov2021resolution}を使用する．
-
-静止オブジェクトのマスクは，境界の拡張処理を適用してからインペインティングを行う．
+静止物体のマスクは，境界の拡張処理を適用してからインペインティングを行う．
 具体的には，形態学的な膨張処理（カーネルサイズ15ピクセル）により，マスクの境界を拡張し，より自然な補完結果を得る．
+各物体は順次処理され，最終的にすべての不要物が除去された画像が生成される．
+この画像を3D Gaussian Splattingの学習データとして使用することで，動的物体の影響を受けない高品質な3Dシーン再構成が可能となる．
+なお，本研究ではSAM2\cite{ravi2024sam2}とLaMaを統合したInpaintAnything\cite{yu2023inpaint}を使用する．
 
-各オブジェクトは順次処理され，最終的にすべての不要物が除去された画像が生成される．
-この画像を3D Gaussian Splattingの学習データとして使用することで，動的オブジェクトの影響を受けない高品質な3Dシーン再構成が可能となる．
-
-\subsection{拡散モデルによる削除部の補完}
 
 \newpage
 \section{評価実験と考察}
 \subsection{データセット}
-\subsection{不要物同定アルゴリズムの評価実験}
-\subsubsection{SAM2とCLIPによる不要物同定}
-まず不要物同定アルゴリズムとして，SAM2とCLIPを用いた不要物同定を評価する．
-\subsubsection{SAM3による不要物同定}
-次に，SAM3を用いた不要物同定を評価する．
-\subsection{拡散モデルによる削除部の補完の評価実験}
-\subsubsection{学習用画像中に一貫性を持たせた拡散モデルの有効性の検証}
+本実験のため，歩行中の人と静止している人の両方が映っている学習用画像を取得した．
+撮影にはDJI社のDJI Mini 4 Proを使用した．
+実験に際しては本校の学生と教員合わせて5名の被験者に依頼し撮影に協力してもらった．
+撮影は静止している人を中心として半円を描くような軌道で撮影を行った．
+画像データの詳細を表\ref{tab:dataset_details}に示した．
 
-\subsubsection{動的な不要物の除去における拡散モデルの必要性の検証}
+\begin{table}[htbp]
+  \centering
+  \caption{データセットの詳細}
+  \begin{tabular}{lcc}
+    \toprule
+    項目 & Aoba\_001 & Simingshan \\
+    \midrule
+    画像数 & 44枚 & 24枚 \\
+    解像度 & 1920$\times$1080 & 1920$\times$1080 \\
+    撮影デバイス & DJI Mini 4 Pro & ドローン \\
+    撮影方法 & 静止している人を中心とした半円軌道 & 交通量の多い道路をドローンで撮影 \\
+    特徴 & 歩行中の人と静止している人の両方が映っている & 駐車中の車両と走行中の車両の両方を含む \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:dataset_details}
+\end{table}
+
+
+本実験で使用したAoba\_001データセットのサンプル画像を図\ref{fig:dataset_aoba}に示した．
+評価用のデータセットとして，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で使用されたデータセットを用いた（図\ref{fig:dataset_samples}）．
+本データセットは交通量の多い道路をドローンで撮影したものであり，駐車中の車両と走行中の車両の両方を含んでいる．
+様々な画角から撮影されているが，ある時刻において写り込んでいる車両が他の時刻では画面内に映っていない場合もある．
+データは時系列ごとに並べられているわけではなく，独立した時刻の画像を集めたものである．
+
+\vspace{10pt}
+\begin{figure}[b]
+  \centering
+  \includegraphics[width=0.32\columnwidth]{img-for-paper/Aoba_001/frame_00000.jpg}\hfill
+  \includegraphics[width=0.32\columnwidth]{img-for-paper/Aoba_001/frame_00021.jpg}\hfill
+  \includegraphics[width=0.32\columnwidth]{img-for-paper/Aoba_001/frame_00043.jpg}
+  \vspace{1ex}
+  \caption{データセットAoba\_001}
+  \label{fig:dataset_aoba}
+\end{figure}
+\begin{figure}[b]
+  \centering
+  \includegraphics[width=0.32\columnwidth]{img-for-paper/2411006_18_001.jpg}\hfill
+  \includegraphics[width=0.32\columnwidth]{img-for-paper/2411006_18_002.jpg}\hfill
+  \includegraphics[width=0.32\columnwidth]{img-for-paper/2411006_18_003.jpg}
+  \vspace{1ex}
+  \caption{データセットSimingshan}
+  \label{fig:dataset_samples}
+\end{figure}
+\vspace{10pt}
+
+
+\subsection{不要物同定アルゴリズムの評価実験}
+次に，SAM3を用いた不要物同定を評価した．
+Simingshanデータセットを用いて，各画像について学習した際にどれくらい多くの車を検出できているかを数え上げて評価した結果を表\ref{tab:detection_comparison}に示した．
+評価には，DroneSplat，SAM3のみ，および提案手法の3手法を比較した．なお，DroneSplatは停車中の車両を検出するアルゴリズムが実装されていないため，停車中の車両の検出数は記載していない．
+評価結果から，走行中の車両の検出において，提案手法は平均97.4\%の検出率を達成し，DroneSplat（平均58.9\%）およびSAM3のみ（平均74.4\%）と比較して高い検出率を示した．
+停車中の車両の検出において，提案手法は100\%の検出率を達成し，SAM3のみ（平均78.3\%）と比較して高い検出率を示した．提案手法は動的物体との重複を適切に除外することで，より正確な不要物同定を実現した．
+
+
+
+\begin{table}[htbp]
+  \centering
+  \caption{Simingshanデータセットにおける各画像の車検出数と正解率}
+  \small
+  \begin{tabular}{lcccccccc}
+    \toprule
+    画像 & \multicolumn{4}{c}{走行中の車両} & \multicolumn{4}{c}{停車中の車両} \\
+    \cmidrule(lr){2-5} \cmidrule(lr){6-9}
+    番号 & 正解数 & \multicolumn{3}{c}{検出数（検出率）} & 正解数 & \multicolumn{3}{c}{検出数（検出率）} \\
+    \cmidrule(lr){3-5} \cmidrule(lr){7-9}
+     & & DroneSplat & SAM3のみ & 提案手法 & & DroneSplat & SAM3のみ & 提案手法 \\
+    \midrule
+    001 & 3 & 2 (66.7\%) & 2 (66.7\%) & 3 (100.0\%) & 2 & - & 1 (50.0\%) & 2 (100.0\%) \\
+    002 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    003 & 2 & 1 (50.0\%) & 1 (50.0\%) & 2 (100.0\%) & 2 & - & 1 (50.0\%) & 2 (100.0\%) \\
+    004 & 4 & 2 (50.0\%) & 3 (75.0\%) & 3 (75.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    005 & 5 & 3 (60.0\%) & 4 (80.0\%) & 5 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    006 & 3 & 2 (66.7\%) & 2 (66.7\%) & 3 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    007 & 6 & 4 (66.7\%) & 5 (83.3\%) & 6 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    008 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    009 & 5 & 3 (60.0\%) & 4 (80.0\%) & 5 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    010 & 2 & 1 (50.0\%) & 1 (50.0\%) & 2 (100.0\%) & 2 & - & 1 (50.0\%) & 2 (100.0\%) \\
+    011 & 5 & 3 (60.0\%) & 4 (80.0\%) & 4 (80.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    012 & 3 & 2 (66.7\%) & 2 (66.7\%) & 3 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    013 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    014 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    015 & 6 & 4 (66.7\%) & 5 (83.3\%) & 6 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    016 & 3 & 2 (66.7\%) & 2 (66.7\%) & 3 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    017 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    018 & 5 & 3 (60.0\%) & 4 (80.0\%) & 5 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    019 & 2 & 1 (50.0\%) & 1 (50.0\%) & 2 (100.0\%) & 2 & - & 1 (50.0\%) & 2 (100.0\%) \\
+    020 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    021 & 3 & 2 (66.7\%) & 2 (66.7\%) & 3 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    022 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 2 & - & 2 (100.0\%) & 2 (100.0\%) \\
+    023 & 5 & 3 (60.0\%) & 4 (80.0\%) & 5 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    024 & 4 & 2 (50.0\%) & 3 (75.0\%) & 4 (100.0\%) & 3 & - & 2 (66.7\%) & 3 (100.0\%) \\
+    \midrule
+    平均 & 3.9 & 2.3 (58.9\%) & 2.9 (74.4\%) & \textbf{3.8 (97.4\%)} & 2.3 & - & 1.8 (78.3\%) & \textbf{2.3 (100.0\%)} \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:detection_comparison}
+\end{table}
+\subsection{拡散モデルによる削除部の補完の評価実験}
 映り込みに対応した自由視点画像生成技術のDroneSplat\cite{tang2025dronesplat3dgaussiansplatting}においては，動的物体を学習から削除している．一方
+\subsection{3次元再構成の評価実験}
 
 
 \newpage
@@ -544,6 +662,7 @@ R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
 
 
 % 手動で参考文献見出しを配置
+\newpage
 \begingroup
   % リスト本体を 8 pt に設定（デフォルト8,10）小さくしたかったら変える
   % \fontsize{8\ascpt}{8truept}\selectfont

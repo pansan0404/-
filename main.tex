@@ -227,12 +227,87 @@ DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}ではそれに対する�
 \newpage
 \section{はじめに}
 \subsection{本研究の概要}
-環境の画像から自由視点画像を得る技術は，近年のAIの発達によって急激に発展している．
-3D Gaussian Splatting（3DGS） \cite{kerbl3Dgaussians}はその代表的な例である．
-ドローンを用いて屋外撮影をする場合の固有の課題が発生するが，
-それらに対する先行研究もある．
-例えば，時刻とともに人や物の位置が変化してしまうため，3次元再構成が困難になるが，
+%
+
+%1. ３次元再構成などについて必要性や代表的な技術などを紹介する．複数段落になっても良い．
+３次元再構成とは，複数視点の2次元画像や深度センサデータから、被写体の3次元形状や立体構造をコンピュータ上で復元する技術である．
+立体視することで，3次元空間での物体の位置や形状を人間がイメージしやすい形で表現することができるため，文化財の保存や３次元マップの作成などに応用されている．
+
+古典的な方法にはStructure-from-Motion（SfM）\cite{snavely2006photo}がある．
+SfMは，複数視点の2次元画像から3次元空間におけるシーンの構造（Structure）と各画像を撮影したカメラの位置・姿勢（Motion）を同時に推定する技術である．
+まず各画像から画像の中で特徴的な点を検出し，異なる画像間で対応する特徴点をマッチングする．
+次に，対応点の情報を用いてカメラの姿勢や位置，レンズの焦点距離，センサーのサイズといったカメラの内部パラメータと，シーンの構造を推定し，三角測量により3次元点群を復元する．
+最後に，バンドル調整と呼ばれる最適化手法により，再投影誤差を最小化することで，カメラパラメータと3次元構造を同時に精密化する．
+SfMは，特別な計測機器を必要とせず，一般的なカメラで撮影した画像のみから3次元モデルを構築できる点が大きな利点であり，フォトグラメトリやデジタルアーカイブ，地図作成などの幅広い分野で活用されている．
+SfMを実行する場合にはCOLMAP\cite{schoenberger2016colmap}が多く用いられている．
+
+ゲームなどのエンターテイメント分野においても３次元再構成が活用されている．
+例えば，Berezuzetaら\cite{berrezueta2025from}の報告によれば，３次元再構成技術を活用することにより，ゲームにおける背景や人物などのモデリングの工数が大幅に削減できることが示された．
+また，画像に比べて物体の形をイメージしやすいことから文化財の保存\cite{gomes20143d}など，様々な領域で3次元再構成の活用が活発化してきている．
+
+2010年代においては，センサー自らが光やレーザーを照射し、その反射を測定して形状を捉える "Active" な手法，もしくは，
+一般的なRGBカメラで撮影された画像のみを用いて形状を推定する "Passive" な手法が主流であったが，どちらにも短所があり，高品質な3次元モデルを安価に生成することは困難であった
+（表\ref{tab:active_passive}）．
+
+\begin{table}[htbp]
+  \centering
+  \caption{能動的手法と受動的手法の比較}
+  \begin{tabular}{p{0.15\linewidth}|p{0.35\linewidth}|p{0.45\linewidth}}
+    \toprule
+    \textbf{} & \textbf{能動的手法} & \textbf{受動的手法} \\
+    \midrule
+    \textbf{説明} & センサー自体が光やレーザーを発射し，その反射を測定して物体の形状を取得する手法 & 一般的なカメラで撮影した画像（環境光）のみを用いて物体の形状を推定する手法 \\
+    \midrule
+    \textbf{主な技術} & レーザースキャン，構造化光など & SfM，MVS，フォトグラメトリなど \\
+    \midrule
+    \textbf{長所} & 
+    \begin{itemize}[leftmargin=*,nosep]
+      \item 非常に高い精度
+      \item 純白の石像などのテクスチャが乏しい物体でも形状を取得可能
+    \end{itemize} &
+    \begin{itemize}[leftmargin=*,nosep]
+      \item 安価な市販カメラで実施可能
+      \item 持ち運びが容易
+      \item テクスチャ情報の取得に優れている
+    \end{itemize} \\
+    \midrule
+    \textbf{短所} & 
+    \begin{itemize}[leftmargin=*,nosep]
+      \item 装置が高価で重い
+      \item 屋外の直射日光下では精度が低下
+      \item 特定の物体材質（黒や鏡面など）に弱い
+    \end{itemize} &
+    \begin{itemize}[leftmargin=*,nosep]
+      \item 物体のテクスチャが乏しい場合，特徴点の抽出が困難
+      \item 照明環境に依存
+      \item 能動的手法と比較して精度のばらつきが大きい傾向
+    \end{itemize} \\
+    \bottomrule
+  \end{tabular}
+  \label{tab:active_passive}
+\end{table}
+そんな中で，近年のAIの発達によって急激に発展したのが，3D Gaussian Splatting (3DGS) \cite{kerbl3Dgaussians}である．
+3DGSは，SfMで得られた祖な点群データを3次元ガウス分布で保管することによってなめらかにモデリングを行うことができる．
+3DGSの主な利点は，従来の点群ベースの手法と比較して，深度センサーなどの高価な機器を必要とせずRGBカメラの情報だけで再構成が可能でありながら，細部まで高品質な画像を生成できる点である．
+
+近年においてはドローンが比較的安価に購入できるようになったために屋外撮影が容易になった．
+3DGSはRGB画像から高品質な3次元モデルを生成することができるため，深度センサーを搭載していない安価なドローンとの相性が非常によく，屋外撮影においても活用が期待されている．
+ゲームのモデリングや都市の3Dマップを生成する際は
+しかし，ドローンを用いて屋外撮影をする場合は時刻とともに人や物の位置が変化してしまうため，3次元再構成が困難になるという課題がある．
 DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}ではそれに対する対応が行われている．
+
+
+
+%2. ドローンと組み合わせる or 屋外への対応的なところもまとめる．メリットも書く
+
+%3. 上記で発生する課題や対策について述べる
+
+%4. 本研究のフォーカスする（取り組む課題）を説明する
+
+%5. 課題解決のためのアイデアや，提案手法の長所について説明．
+
+%6. 性能についても簡単に触れる
+
 
 
 
@@ -685,30 +760,53 @@ NeRFと3DGSの評価は，NeRFStudio\cite{nerfstudio}内のモデルを利用し
 一方，DroneSplatと提案手法の評価は，DroneSplatが提供する評価プログラムを用いて検証した．
 評価結果を表\ref{tab:metrics}に示す．
 
-\begin{table}[htbp]
+\begin{table}[b]
   \centering
-  \caption{Simingshanデータセットにおける各手法の性能比較}
-  \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
-  \begin{tabular}{l
-                  S[table-format=2.2]
-                  S[table-format=1.3]
-                  S[table-format=1.3]}
-    \toprule
-    Method
-      & \multicolumn{3}{c}{Simingshan} \\
-    \cmidrule(lr){2-4}
-      & {PSNR\(\uparrow\)} & {SSIM\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
-    \midrule
-    NeRF\cite{mildenhall2020nerfrepresentingscenesneural}                 & 19.07 & 0.417 & 0.267 \\
-    3DGS\cite{kerbl3Dgaussians}          & 19.68 & 0.476 & 0.254 \\
-    DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}                  & \textcolor{red}{22.76} & \textcolor{red}{\textbf{0.759}} & \textcolor{red}{\textbf{0.152}} \\
-    Ours                        & \textcolor{red}{\textbf{22.79}} & \textcolor{red}{0.757} & \textcolor{red}{0.155} \\
-    \bottomrule
-  \end{tabular}
-  \label{tab:metrics}
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \caption{Simingshanデータセットにおける各手法の性能比較}
+    \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
+    \begin{tabular}{l
+                    S[table-format=1.3]
+                    S[table-format=2.2]
+                    S[table-format=1.3]}
+      \toprule
+      Method
+        & \multicolumn{3}{c}{Simingshan} \\
+      \cmidrule(lr){2-4}
+        & {SSIM\(\uparrow\)} & {PSNR\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
+      \midrule
+      NeRF\cite{mildenhall2020nerfrepresentingscenesneural}                 & 0.417 & 19.07 & 0.267 \\
+      3DGS\cite{kerbl3Dgaussians}          & 0.476 & 19.68 & 0.254 \\
+      DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}                  & \textcolor{red}{\textbf{0.759}} & \textcolor{red}{22.76} & \textcolor{red}{\textbf{0.152}} \\
+      Ours                        & \textcolor{red}{0.757} & \textcolor{red}{\textbf{22.79}} & \textcolor{red}{0.155} \\
+      \bottomrule
+    \end{tabular}
+    \label{tab:metrics}
+  \end{minipage}
+  \hfill
+  \begin{minipage}[t]{0.48\linewidth}
+    \centering
+    \caption{Mip-NeRF360データセットにおける各手法の性能比較\cite{kerbl3Dgaussians}}
+    \rowcolors{3}{white}{gray!10}
+    \begin{tabular}{l
+                    S[table-format=1.3]
+                    S[table-format=2.2]
+                    S[table-format=1.3]}
+      \toprule
+      Method
+        & {SSIM\(\uparrow\)} & {PSNR\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
+      \midrule
+      Plenoxels\cite{yu_and_fridovichkeil2021plenoxels} & 0.626 & 23.08 & 0.463 \\
+      INGP-Base & 0.671 & 25.30 & 0.371 \\
+      INGP-Big & 0.699 & 25.59 & 0.331 \\
+      M-NeRF360\cite{barron2022mipnerf360} & 0.792 & 27.69 & 0.237 \\
+      3DGS\cite{kerbl3Dgaussians} & 0.770 & 25.60 & 0.279 \\
+      \bottomrule
+    \end{tabular}
+    \label{tab:mipnerf360}
+  \end{minipage}
 \end{table}
-
-評価結果から，以下の重要な知見が得られた．
 
 DroneSplatと提案手法は，従来手法であるNeRFや3DGSと比較して劇的な性能向上を達成した．
 NeRF（PSNR: 19.07 dB，SSIM: 0.417，LPIPS: 0.267）や3DGS（PSNR: 19.68 dB，SSIM: 0.476，LPIPS: 0.254）と比較して，DroneSplatと提案手法はPSNRで約3 dB（約15-16\%），SSIMで約60\%，LPIPSで約40\%の劇的な改善を示している．
@@ -718,30 +816,6 @@ NeRF（PSNR: 19.07 dB，SSIM: 0.417，LPIPS: 0.267）や3DGS（PSNR: 19.68 dB，
 提案手法は動的シーンにおいてPSNR 22.79 dB，SSIM 0.757，LPIPS 0.155を達成しており，静止シーンでの結果と比較すると，特にLPIPSではMip-NeRF360（0.237）や3DGS（0.279）を上回る性能を示している．
 SSIMについても0.757という値は，静止シーンでの3DGS（0.770）に近い値を達成しており，動的シーンでも静止シーンと遜色ない構造的類似性を実現できている．
 これらの結果は，提案手法が動的シーンという従来手法が困難としていた条件下でも，静止シーンを対象とした先行研究と同等の高品質な3次元再構成を実現できていることを明確に示している．
-
-\begin{table}[htbp]
-  \centering
-  \caption{Mip-NeRF360データセットにおける各手法の性能比較\cite{kerbl3Dgaussians}}
-  \rowcolors{3}{white}{gray!10}
-  \begin{tabular}{l
-                  S[table-format=1.3]
-                  S[table-format=2.2]
-                  S[table-format=1.3]
-                  c}
-    \toprule
-    Method
-      & {SSIM\(\uparrow\)} & {PSNR\(\uparrow\)} & {LPIPS\(\downarrow\)} & {Tr} \\
-    \midrule
-    Plenoxels & 0.626 & 23.08 & 0.463 & 25m \\
-    INGP-Base & 0.671 & 25.30 & 0.371 & 5m \\
-    INGP-Big & 0.699 & 25.59 & 0.331 & 7m \\
-    M-NeRF360 & 0.792 & 27.69 & 0.237 & 48m \\
-    3DGS & 0.770 & 25.60 & 0.279 & 6m \\
-    \bottomrule
-  \end{tabular}
-  \label{tab:mipnerf360}
-\end{table}
-
 提案手法とDroneSplatの比較において，提案手法はPSNRで最高値（22.79 dB）を達成し，DroneSplat（22.76 dB）と同等の性能を示した．
 SSIMとLPIPSにおいても，提案手法（SSIM: 0.757，LPIPS: 0.155）はDroneSplat（SSIM: 0.759，LPIPS: 0.152）とわずかな差であり，実質的に同等の性能を示した．
 これは，提案手法がDroneSplatと遜色なく3次元再構成を実現できていることを示しており，不要物除去という追加機能を提供しながらも，再構成品質を維持できていることを意味する．

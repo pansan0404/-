@@ -23,6 +23,7 @@
 \usepackage{url}                      % URL の表示
 \usepackage{setspace}                 % 行間の調整
 \usepackage{tikz}                     % 図の描画
+\usepackage{placeins}                 % 図の配置順序制御
 % フォント設定（ローカル環境用、XeLaTeXの場合のみ）
 % 本文：明朝体、見出し：ゴシック体
 \ifxetex
@@ -336,7 +337,7 @@ DroneSplatでは，動いている物体を学習から除外することでこ�
 %5. 課題解決のためのアイデアや，提案手法の長所について説明．
 本研究では，ユーザが不要だと設定した物体をテキストで指定し，動いている物体と同時に再構成モデルから削除する仕組みを提案する．
 セマンティックセグメンテーションモデルのSegment Anything Model 3 (SAM3)\cite{carion2025sam3segmentconcepts}にユーザが不要であると設定した物体をテキストで入力し，学習用画像内から該当する物体を同定する．
-不要物体であると判断された領域は拡散モデルであるLaMa\cite{rothenberger2022lama}により補完することで，自然な３次元モデルを得ることができる．
+不要物体であると判断された領域は拡散モデルであるLaMa\cite{suvorov2021resolution}により補完することで，自然な３次元モデルを得ることができる．
 また，Dronsplat\cite{tang2025dronesplat3dgaussiansplatting}の技術を用いて３次元再構成に悪影響を与える動いている物体も同時に削除する．
 
 %6. 性能についても簡単に触れる
@@ -359,6 +360,7 @@ DroneSplatでは，動いている物体を学習から除外することでこ�
 3次元再構成とは，RGB画像や，深度情報などを用いて3次元空間における物体の形状をモデリングする技術である．
 3次元モデルを表現する方法としては，主にメッシュや点群などがある（図\ref{fig:mesh_pointcloud}）．
 
+\vspace{20pt}
 \begin{figure}[htbp]
   \centering
   \begin{subfigure}[t]{0.48\linewidth}
@@ -377,6 +379,7 @@ DroneSplatでは，動いている物体を学習から除外することでこ�
   \caption{3次元モデルの表現方法}
   \label{fig:mesh_pointcloud}
 \end{figure}
+\vspace{20pt}
 
 Structure from Motion (SfM)\cite{snavely2006photo}は点群データを用いた3次元再構成の代表的な例である．
 SfMは，同一シーンを異なる視点から撮影した複数の画像から，3次元空間におけるシーンの構造（Structure）と各画像を撮影したカメラの位置・姿勢（Motion）を同時に推定する．
@@ -389,23 +392,35 @@ SfMは，特別な計測機器を必要とせず，一般的なカメラで撮�
 そのほかにも，ニューラルネットワークを用いて3次元空間を表現する手法がある．
 髪の毛や細かな草木、あるいは煙のような境界が曖昧なものをメッシュで表現するのはほぼ不可能であった．
 NeRF\cite{mildenhall2020nerfrepresentingscenesneural}はそのような複雑な形状を高精細に表現することができる．
-NeRFはニューラルネットワークを用いて３次元空間を表現する技術である．
 同一シーンを異なる視点から撮影した複数の画像とカメラパラメータを用いて学習し，学習用画像とニューラルネットワークが出力する画像の誤差が小さくなるように学習することで，３次元表現を獲得する．
-また，ニューラルネットワークは学習に用いた角度以外の任意の視点から高品質な自由視点画像を生成することができる．
+また，学習に用いた角度以外の任意の視点から高品質な自由視点画像を生成することができる．
 一方で，レンダリング時に各ピクセルごとにニューラルネットワークの推論が必要となるため，レンダリング速度が非常に遅く，リアルタイムでの自由視点ナビゲーションが困難であるという課題がある．
 
 %3dgsについて
-このレンダリングの遅さを解消したのが，2023年に発表されたのがKerblらによって提案された3D Gaussian Splatting (3DGS) \cite{kerbl3Dgaussians} である（図\ref{fig:render3dgs}）．
+このレンダリングの遅さを解消したのが，2023年に発表されたのがKerblらによって提案された3D Gaussian Splatting (3DGS) \cite{kerbl3Dgaussians}
+学習を進めながら生成の品質を高める点ではNeRFと同一であるが，3次元空間を3次元ガウス分布の集合として表現することが特徴である．
+各ガウス分布は，位置，共分散行列（形状と向き），不透明度，そして球状調和関数に基づく色情報をパラメータとして持つ．
+最適化の過程でガウシアンのパラメタータを変化させることで，NeRFと同様に高品質な自由視点画像を生成することができる（図\ref{fig:3dgs_train}）．
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=0.8\linewidth]{img-for-paper/img_for_render3dgs.jpg}
-  \caption{3D Gaussian Splattingによるレンダリング例}
+  \includegraphics[width=1.0\linewidth]{img-for-paper/3dgs_train.png}
+  \caption{3D Gaussian Splattingの学習過程}
+  \label{fig:3dgs_train}
+\end{figure}
+\vspace{20pt}
+
+図\ref{fig:3dgs_train}におけるレンダリング処理は，図\ref{fig:render3dgs}に示すように，各ガウス分布のパラメタータを用いて，光線に沿った色を計算する．
+
+\vspace{20pt}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=1.0\linewidth]{img-for-paper/img_for_render3dgs.jpg}
+  \caption{3D Gaussian Splatting のレンダリング手順}
   \label{fig:render3dgs}
 \end{figure}
-学習を進めながら生成の品質を高める点ではNeRFと同一であるが，3次元空間を3次元ガウス分布の集合として表現することが特徴である．
-各ガウス分布は，位置，共分散行列（形状と向き），不透明度，そして球状調和関数に基づく色情報をパラメータとして持つ．
-ポイントベースの$\alpha$（アルファ）ブレンディングとNeRFスタイルのボリュームレンダリングは，本質的に同じ画像生成モデルを共有している．
+\vspace{20pt}
+
 具体的には，ある光線（レイ）に沿った色$C$は，以下のボリュームレンダリングの式で与えられる：
 \begin{equation}
 C = \sum_{i=1}^{N} T_i (1 - \exp(-\sigma_i \delta_i)) c_i \quad \text{ここで} \quad T_i = \exp\left(-\sum_{j=1}^{i-1} \sigma_j \delta_j\right)
@@ -433,8 +448,8 @@ C = \sum_{i \in N} c_i \alpha_i \prod_{j=1}^{i-1}(1 - \alpha_j)
 
 
 \subsubsection{3次元再構成における評価指標}
-3次元再構成の品質を評価するための評価指標を紹介する．
-PSNR（Peak Signal-to-Noise Ratio）は，画像のピーク信号対雑音比を表す指標であり，単位はdBである．PSNRは以下の式で計算される：
+3次元再構成により得られた画像を評価するための評価指標を紹介する．
+PSNR（Peak Signal-to-Noise Ratio）は，画像のピーク信号対誤差を表す指標であり，単位はdBである．PSNRは以下の式で計算される：
 \begin{equation}
 \text{PSNR} = 10 \log_{10} \frac{\text{MAX}_I^2}{\text{MSE}}
 \end{equation}
@@ -465,6 +480,7 @@ NeRFStudio\cite{nerfstudio}は，NeRFや3DGSなどの3次元再構成技術を�
 NeRFStudioは，データの前処理から学習，レンダリング，可視化まで，3次元再構成のワークフロー全体をサポートする統合的な開発環境を提供している．
 これにより，研究者は複雑な実装の詳細に煩わされることなく，様々な3次元再構成手法を比較検討し，新たな手法の開発に集中することができる．
 また，NeRFStudioはモジュール化された設計により，新しい手法の追加や既存手法の拡張を容易にし，3次元再構成技術の発展を加速させている．
+NeRFStudioの利用例を図\ref{fig:nerfstudio}に示す．
 
 \begin{figure}[htbp]
   \centering
@@ -476,12 +492,12 @@ NeRFStudioは，データの前処理から学習，レンダリング，可視�
 
 \subsubsection{セマンティックセグメンテーション}
 セマンティックセグメンテーションは，画像の各ピクセルをなんらか意味を持った領域に分割する技術のことである．
-一つの画像に対して一つのラベルを付与する画像分類問題や，画像内の物体を認識し，矩形で過酷む物体検出と比べると，セマンティックセグメンテーションは画像中のピクセルに対してラベルを付与することで，より細かい粒度での物体の分割を行うことができる（図\ref{fig:concept}）．
+一つの画像に対して一つのラベルを付与する画像分類問題や，画像内の物体を認識し，矩形で囲む物体検出と比べると，セマンティックセグメンテーションは画像中のピクセルに対してラベルを付与することで，より細かい粒度での物体の分割を行うことができる（図\ref{fig:concept}）．
 SAM2\cite{ravi2024sam2}はセマンティックセグメンテーションの代表的な例である．
 SAM2は，従来のセマンティックセグメンテーション手法が特定の物体クラスに限定されていたり，動画シーケンスへの対応が困難であったりした課題を克服した画期的な手法である．
 SAM2の最大の特徴は，大規模データセットで学習された汎用的なセグメンテーションモデルを持ち，事前に学習した物体クラス以外の物体もセグメンテーションできる点である．
 さらに，画像だけでなく動画シーケンスにも対応し，時系列情報を活用することで，より一貫性のあるセグメンテーション結果を生成することができる．
-また，ユーザーからの点や矩形，テキストなどの多様な入力形式を受け付けることができる点も，従来手法と比較して大きな進歩であった．
+また，ユーザーからの点や矩形，テキストなどの多様な入力形式を受け付けることができる点も，従来手法と比較して大きな進歩である．
 
 
 \begin{figure}[htbp]
@@ -505,21 +521,49 @@ SAM2の最大の特徴は，大規模データセットで学習された汎用�
     \label{fig:segmentation}
   \end{subfigure}
   \vspace{1ex}
-  \caption{コンピュータビジョンタスクの比較}
+  \caption{人をラベルとした画像分類，物体検出，セマンティックセグメンテーションの比較}
   \label{fig:concept}
 \end{figure}
 
-\subsubsection{映り込みに対応した自由視点画像生成技術}
-Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法は，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いた適応的な動的物体マスキング（Adaptive dynamic-object masking）を特徴とする．
+SAM2の改良版として，Segment Anything Model 3 (SAM3)\cite{carion2025sam3segmentconcepts}が提案されている．
+SAM3は，SAM2の機能を継承しつつ，テキストプロンプトによる物体検出機能を追加した手法である．
+SAM2が点や矩形，テキストなどの多様な入力形式を受け付けることができるのに対し，SAM3は特にテキストプロンプトに基づいた物体の検出と追跡に優れており，動画シーケンス全体から指定した物体を一貫して検出・セグメンテーションできる点が特徴である．
+これにより，ユーザーが自然言語で指定した物体（例えば「car」や「person」など）を動画全体から自動的に検出し，時系列にわたって追跡することが可能となった．
+本研究では，このSAM3のテキストプロンプト機能を活用して，ユーザーが指定した不要物体を動画シーケンス全体から検出・除去する手法を提案している．
+SAM3とSAM2の違いを表\ref{tab:sam3_sam2}に示す．
+\begin{table}[htbp]
+  \centering
+  \caption{SAM3とSAM2の機能比較}
+  \label{tab:sam3_sam2}
+  \begin{tabular}{p{0.5\linewidth}|c|c}
+    \toprule
+    \textbf{機能} & \textbf{SAM3} & \textbf{SAM2} \\
+    \midrule
+    クリックによる物体セグメンテーション & ○ & ○ \\
+    \midrule
+    動画内の物体追跡 & ○ & ○ \\
+    \midrule
+    テキストによる物体の検出・セグメンテーション & ○ & × \\
+    \midrule
+    複数の物体の検出・トラッキング & ○ & × \\
+    \midrule
+    自然言語による物体の検出・セグメンテーション & ○ & × \\
+    \bottomrule
+  \end{tabular}
+\end{table}\vspace{20pt}
 
-DroneSplatの学習プロセスは，2段階の学習フェーズから構成される．第1段階（Pre-training）では，SAM2を用いて各学習画像$I_k$（$k = 1, \ldots, N$はフレーム番号）からインスタンスレベルのセグメンテーションマスク$\mathcal{M}_k = \{M_k^1, M_k^2, \ldots, M_k^{S_k}\}$を取得する．ここで，$S_k$はフレーム$k$におけるセグメント数である．
+\subsubsection{動的物体に対応した3次元再構成技術}
+Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法は，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いた適応的な動的物体マスキング（Adaptive dynamic-object masking）を特徴とする．
+$N$枚のフレーム$I_1, I_2, ..., I_N$が与えられたとき，動的物体のみを学習に使用せずに，3次元再構成タスクを実施することを考える．
+
+まず，第1段階（Pre-training）では，SAM2を用いて各学習画像$I_k$（$k = 1, \ldots, N$はフレーム番号）からインスタンスレベルのセグメンテーションマスク$\mathcal{M}_k = \{M_k^1, M_k^2, \ldots, M_k^{S_k}\}$を取得する．ここで，$S_k$はフレーム$k$におけるセグメント数である．
 
 次に，3DGSの学習において，動的物体を含むセグメントを段階的に除外する適応的マスキングを適用する．具体的には，学習iteration $t$における損失関数$\mathcal{L}_t$を以下のように定義する：
 \begin{equation}
 \mathcal{L}_t = \sum_{k=1}^{N} \sum_{p \in \mathcal{P}_k} w_t(p) \cdot \ell(\hat{I}_k(p), I_k(p))
 \end{equation}
 \vspace{-9pt}
-ここで，$\hat{I}_k(p)$はフレーム$k$のピクセル$p$におけるレンダリング結果，$I_k(p)$は正解画像，$\ell(\cdot, \cdot)$はL1損失とSSIM損失の組み合わせ，$\mathcal{P}_k$はフレーム$k$の全ピクセル集合である．重み$w_t(p)$は，iteration $t$におけるピクセル$p$の動的物体マスク$\mathcal{M}_t^{dynamic}(p)$に基づいて以下のように決定される：
+ここで，$\hat{I}_k(p)$はフレーム$k$のピクセル$p$におけるレンダリング結果，$I_k(p)$は学習用画像，$\ell(\cdot, \cdot)$は２画像間で定義される損失数であり，L1損失とSSIM損失の組み合わせである．$\mathcal{P}_k$はフレーム$k$の全ピクセル集合である．重み$w_t(p)$は，iteration $t$におけるピクセル$p$の動的物体マスク$\mathcal{M}_t^{dynamic}(p)$に基づいて以下のように決定される：
 \begin{equation}
 w_t(p) = \begin{cases}
 0 & \text{if } \mathcal{M}_t^{dynamic}(p) = 1 \\
@@ -527,13 +571,15 @@ w_t(p) = \begin{cases}
 \end{cases}
 \end{equation}
 
-動的物体マスク$\mathcal{M}_t^{dynamic}$は，各iterationにおいて更新される．初期iterationでは全セグメントを学習対象とするが，学習が進むにつれて，複数フレーム間で一貫性のない再構成誤差を示すセグメントを動的物体として同定し，段階的に除外する．具体的には，セグメント$M_k^i$の動的度合い$D_k$を以下の式で計算する：
+動的物体マスク$\mathcal{M}_t^{dynamic}$は，各iterationにおいて更新される．初期iterationでは全セグメントを学習対象とするが，学習が進むにつれて，複数フレーム間で一貫性のない再構成誤差を示すセグメントを動的物体として同定し，それを段階的に損失関数から除外する．具体的には，セグメント$M_k^i$の動的度合い$D_k$を以下の式で計算する：
 \begin{equation}
 D_k = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \max_{q \in P_k} \ell(\hat{I}_k(q), I_k(q))
 \end{equation}
 \vspace{-9pt}
-ここで，$|M_k^i|$はセグメント$M_k^i$の画素数である．動的度合いが閾値$\tau_{dynamic}$を超えるセグメントは動的物体として判定され，その後の学習から除外される．第2段階（Main training）では，第1段階で得られた動的物体マスクを用いて，動的物体を除外した画像に対して3DGSを再学習する．これにより，動的な不要物体を考慮しない高品質な3Dシーン再構成が可能となる．
-評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている（図\ref{fig:comparison}）．
+ここで，$|M_k^i|$はセグメント$M_k^i$の画素数である．式(8)で計算された動的度合い$D_k$が閾値$\tau_{dynamic}$を超える場合，そのセグメント$M_k^i$に含まれるピクセル$p$に対して$\mathcal{M}_t^{dynamic}(p) = 1$を設定する．これにより，式(7)の重み$w_t(p)$が0となり，式(6)の損失関数$\mathcal{L}_t$から該当ピクセルが除外される．このようにして，動的度合いが閾値を超えるセグメントは動的物体として判定され，その後の学習から除外される．
+
+第2段階（Main training）では，第1段階で得られた動的物体マスクを用いて，動的物体を除外した画像に対して3DGSを再学習する．これにより，動的な不要物体を考慮しない高品質な3次元再構成が可能となる．
+提案手法の評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている（図\ref{fig:comparison}）．
 
 \begin{figure}[htbp]
   \centering
@@ -557,10 +603,10 @@ D_k = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \max_{q \in P_k} \ell(\hat{I}_k(q), I
 \subsection{現状の課題}
 自由視点画像生成技術の研究においては，以下の4つの領域が研究の中心となっている：
 \begin{enumerate}[label=(\arabic*)]
-\item 高精細に再構成する
-\item 計算量を削減する
-\item レンダリング速度を高速化する
-\item 人や物の動きへ対応する
+\item 高精細に再構成する\cite{kerbl3Dgaussians,lin2024vastgaussian,liu2025citygaussian,mildenhall2020nerfrepresentingscenesneural,barron2022mipnerf360}
+\item 計算量を削減する\cite{kerbl3Dgaussians,lin2024vastgaussian,chen2022tensorf}
+\item レンダリング速度を高速化する\cite{kerbl3Dgaussians,muller2022instant,yu_and_fridovichkeil2021plenoxels}
+\item 人や物の動きへ対応する\cite{tang2025dronesplat3dgaussiansplatting}
 \end{enumerate}
 これらを実用レベルで実現できるモデルが理想である．本研究は，(4) 人や物の動きへ対応するための研究である．
 現状，多くの研究は(1)〜(3)の領域で進められている．例えば，3D Gaussian Splatting\cite{kerbl3Dgaussians}は高精細な再構成と高速なレンダリングを実現し，NeRF\cite{mildenhall2020nerfrepresentingscenesneural}は高品質な3次元再構成を可能にした．しかし，これらの手法は動的な物体が含まれるシーンにおいて，再構成精度の低下やアーティファクトの発生などの問題を抱えている．
@@ -611,14 +657,43 @@ D_k = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \max_{q \in P_k} \ell(\hat{I}_k(q), I
 
 \clearpage
 \section{提案手法}
+本研究では，ドローン撮影時に映り込んだ不要物体を自動的に除去し，高品質な3次元再構成を実現する手法を提案する．
+従来のDroneSplat\cite{tang2025dronesplat3dgaussiansplatting}は，動いている物体を学習から除外することで動的シーンにおける3次元再構成の課題に対処しているが，静止している不要物体（例えば停車中の車など）は検出・除去できないという課題があった．
 本手法では，3DGS\cite{kerbl3Dgaussians}の学習において，動的物体と静止物体を区別して不要物を同定する．
 動的物体は学習中の損失情報から検出し，静止物体は事前学習済みのセグメンテーションモデルを用いて検出する．
-両者の情報を統合することで，より包括的な不要物同定を実現する．
+両者の情報を統合することで，より実用的な不要物同定とその削除を実現する．
+
+本手法は，2.3節で述べたDroneSplatの2段階学習過程を拡張し，動的物体の削除だけでなくユーザーが不要と判断した静止物体をテキストで指定し，それらを除去することができる．
+DroneSplatの第1段階（Dynamic detection）では，3DGSの学習過程において複数フレーム間で一貫性のない再構成誤差を示す領域を動的物体として検出する．
+具体的には，各フレームのレンダリング結果と正解画像との間の損失を計算し，インスタンス単位で損失を集計することで動的度合いを評価する．
+動的度合いが閾値を超えるセグメントは動的物体として判定され，その後の学習から除外される．
+第2段階（Main training）では，第1段階で得られた動的物体マスクを用いて，動的物体を除外した画像に対して3DGSを再学習する．
+
+静止物体の検出には，Segment Anything Model 3 (SAM3)\cite{carion2025sam3segmentconcepts}のテキストプロンプト機能を活用し，ユーザーが指定した不要物体（例えば「car」）を動画シーケンス全体から検出する．
+SAM3で検出された物体のうち，動的物体マスクと重複するものは既にDroneSplatで処理されるため除外し，残りの静止物体のみを不要物として扱う．
+検出された静止物体のマスクに対して拡散モデルであるLaMa\cite{suvorov2021resolution}を適用し，不要物を除去した画像を生成する．
+最後に，不要物除去後の画像を用いてDroneSplatを再学習することで，動的物体と静止物体の両方を除去した高品質な3次元再構成を実現する．
+
+学習用画像はドローンによって撮影された画像である．
+ドローンは撮影対象上空を旋回し撮影する．
+撮影はドローン１機のみで撮影を行うため，撮影の間人や物などが絶えず動いている環境を対象とする（図\ref{fig:howtogettainimages}）．
+
+\vspace{10pt}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{img-for-paper/how_to_get_train_images.png}
+  \caption{学習用データ撮影時のイメージ}
+  \label{fig:howtogettainimages}
+\end{figure}
+\vspace{75pt}
+\FloatBarrier
+
+
 本手法の学習の流れを以下に示す：
 
 \begin{enumerate}
-\item \textbf{動的物体の検出}: 元の画像データセットを用いてDroneSplatを学習し，動的物体のマスクを取得する（3.1節）．
-\item \textbf{静止物体の検出とフィルタリング}: SAM3の検出結果と動的物体のマスクを比較し，重複する物体を除外する（3.2節）．
+\item \textbf{動的物体の検出}: 元の画像データセットを用いて3DGSを学習し，DroneSplatと同様の損失関数により，動的物体マスクを取得する（3.1節）．
+\item \textbf{静止物体の検出とフィルタリング}: SAM3\cite{carion2025sam3segmentconcepts}の検出結果と動的物体のマスクを比較し，重複する物体を除外する（3.2節）．
 \item \textbf{不要物の除去}: フィルタリング後の静止物体マスクに対してLaMaを適用し，不要物を除去した画像を生成する（3.3節）．
 \item \textbf{再学習}: 不要物の除去後の画像を用いてDroneSplatを再学習し，最終的な3Dシーン再構成を行う．
 \end{enumerate}
@@ -633,35 +708,49 @@ D_k = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \max_{q \in P_k} \ell(\hat{I}_k(q), I
 \end{figure}
 \vspace{10pt}
 \vspace{10pt}
+\FloatBarrier
+
+
 \subsection{動的物体の検出}
 動的物体は，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される． 
-本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，各フレームにおけるインスタンスレベルの損失分布を分析することで動的物体を同定する．
+本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，各フレームの損失から不要物体を同定する．
 
 具体的には，学習開始から一定のiteration（本実験では500 iteration）経過後，各フレームのレンダリング結果と正解画像との間のL1損失およびSSIM損失を計算する．
 これらの損失を正規化し，以下の式で統合損失を算出する：
 \begin{equation}
-L_{combined} = \frac{4 \cdot L_{L1}^{norm} + L_{SSIM}^{norm}}{5}
+l_{\text{Combined}}(x^{(p)}, y^{(p)}) = \frac{4 \cdot l_{\text{L1}}^{\text{norm}}(x^{(p)}, y^{(p)}) + l_{\text{SSLM}}^{\text{norm}}(x^{(p)}, y^{(p)})}{5}
 \end{equation}
-\vspace{-9pt}
-ここで，$L_{L1}^{norm}$および$L_{SSIM}^{norm}$は，それぞれL1損失とSSIM損失を0-1の範囲に正規化した値である．
+ここで，$x^{(p)}$は画素$p$におけるレンダリング結果，$y^{(p)}$は正解画像の画素$p$の値である．
+$l_{\text{L1}}^{\text{norm}}$と$l_{\text{SSLM}}^{\text{norm}}$は，それぞれL1損失とSSIM損失を0-1の範囲に正規化した値である．
+L1損失は画素値の絶対誤差を測定し，SSIM損失は構造的類似性を考慮するため，両者を組み合わせることでより包括的な誤差評価が可能となる．
+式(1)では，L1損失に4倍の重みを付けることで，画素レベルの精度を重視しつつ，構造的類似性も考慮した統合損失を実現している．
 
-次に，各フレームに与えられたインスタンスセグメンテーションマスクを用いて，インスタンス単位での損失を集計する．
-インスタンス$i$の損失$L_i$は，以下の式で計算される：
+次に，各フレームに与えられた物体のセグメンテーションマスクを用いて，物体単位での損失を集計する．
+物体のセグメンテーションにより，画像内の各物体（人，車，建物など）が個別に検出され，各物体に対応するマスク領域が得られる．
+物体$i$の損失$L_i$は，以下の式で計算される：
 \begin{equation}
 L_i = \frac{\sum_{p \in M_i} L_{combined}(p)}{|M_i|}
 \end{equation}
-\vspace{-9pt}
-ここで，$M_i$はインスタンス$i$のマスク領域，$|M_i|$はその画素数である．
+ここで，$M_i$は物体$i$のマスク領域，$|M_i|$はその画素数である．
+式(2)は，物体$i$に属するすべての画素の統合損失の平均値を計算する．
+動的物体は複数フレーム間で一貫性のない再構成誤差を示すため，物体単位で損失を集計することで，各物体全体の動的度合いを評価できる．
+画素単位ではなく物体単位で評価することで，物体の一部だけが誤差を示す場合でも，物体全体として動的かどうかを適切に判定できる．
 
-各インスタンスの損失値をヒートマップとして可視化し，動的閾値$T_{dynamic}$を以下の式で決定する：
+各物体の損失値をヒートマップとして可視化し，動的閾値$T_{dynamic}$を以下の式で決定する：
 \begin{equation}
 T_{dynamic} = \mu + \sigma + \alpha \cdot \sigma \cdot \frac{I_{\max} - I_{current}}{I_{\max}}
 \end{equation}
-\vspace{-9pt}
 ここで，$\mu$と$\sigma$はヒートマップの平均値と標準偏差，$I_{current}$と$I_{\max}$は現在のiterationと最大iteration，$\alpha$は調整パラメータである．
-この閾値により，学習の進行に応じて動的物体の検出感度を調整する．
+式(3)の第1項$\mu + \sigma$は，統計的に異常な損失値を持つ物体を検出するための基準値である．
+平均値$\mu$に標準偏差$\sigma$を加えることで，損失値が平均よりも1標準偏差以上大きい物体を動的物体の候補として検出する．
+第2項$\alpha \cdot \sigma \cdot \frac{I_{\max} - I_{current}}{I_{\max}}$は，学習の進行に応じて閾値を動的に調整する項である．
+学習初期（$I_{current}$が小さい）では，この項の値が大きく，より多くの物体が動的物体として検出される可能性がある．
+これは，学習初期は再構成精度が低く，静止物体でも高い損失を示す可能性があるためである．
+学習が進むにつれて（$I_{current}$が$I_{\max}$に近づく），この項の値は小さくなり，より厳格な基準で動的物体を検出する．
+これにより，学習が進んで再構成精度が向上した後は，真に動的な物体のみを検出できるようになる．
+この適応的閾値により，学習の進行に応じて動的物体の検出感度を調整し，誤検出を抑制しながら動的物体を確実に検出できる．
 
-損失値が閾値を超えるインスタンスは動的物体として判定され，そのマスクが除外対象として記録される．
+損失値が閾値を超える物体は動的物体として判定され，そのマスクが除外対象として記録される．
 学習の最終iterationにおいて，すべての学習フレームに対する除外マスクを保存する．
 
 \subsection{静止物体の検出とフィルタリング}
@@ -818,26 +907,26 @@ NeRFと3DGSの評価は，NeRFStudio\cite{nerfstudio}内のモデルを利用し
 \begin{table}[b]
   \centering
   \begin{minipage}[t]{0.48\linewidth}
-    \centering
-    \caption{Simingshanデータセットにおける各手法の性能比較}
-    \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
-    \begin{tabular}{l
+  \centering
+  \caption{Simingshanデータセットにおける各手法の性能比較}
+  \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
+  \begin{tabular}{l
                     S[table-format=1.3]
-                    S[table-format=2.2]
-                    S[table-format=1.3]}
-      \toprule
-      Method
-        & \multicolumn{3}{c}{Simingshan} \\
-      \cmidrule(lr){2-4}
+                  S[table-format=2.2]
+                  S[table-format=1.3]}
+    \toprule
+    Method
+      & \multicolumn{3}{c}{Simingshan} \\
+    \cmidrule(lr){2-4}
         & {SSIM\(\uparrow\)} & {PSNR\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
-      \midrule
+    \midrule
       NeRF\cite{mildenhall2020nerfrepresentingscenesneural}                 & 0.417 & 19.07 & 0.267 \\
       3DGS\cite{kerbl3Dgaussians}          & 0.476 & 19.68 & 0.254 \\
       DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}                  & \textcolor{red}{\textbf{0.759}} & \textcolor{red}{22.76} & \textcolor{red}{\textbf{0.152}} \\
       Ours                        & \textcolor{red}{0.757} & \textcolor{red}{\textbf{22.79}} & \textcolor{red}{0.155} \\
-      \bottomrule
-    \end{tabular}
-    \label{tab:metrics}
+    \bottomrule
+  \end{tabular}
+  \label{tab:metrics}
   \end{minipage}
   \hfill
   \begin{minipage}[t]{0.48\linewidth}

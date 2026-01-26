@@ -38,3 +38,6 @@ desktop.ini
 # Overleaf関連
 .overleaf/
 
+# 大きなファイル
+*.psd
+asset_for_master-paper.psd

@@ -556,27 +556,47 @@ SAM3とSAM2の違いを表\ref{tab:sam3_sam2}に示す．
 Tang らによって提案されたDroneSplat\cite{tang2025dronesplat3dgaussiansplatting} は，ドローンを用いた大規模な屋外環境における動的物体への耐性を高めた3DGS\cite{kerbl3Dgaussians}の拡張手法である．本手法は，Segment Anything Model v2（SAM2）\cite{ravi2024sam2} を用いた適応的な動的物体マスキング（Adaptive dynamic-object masking）を特徴とする．
 $N$枚のフレーム$I_1, I_2, ..., I_N$が与えられたとき，動的物体のみを学習に使用せずに，3次元再構成タスクを実施することを考える．
 
-まず，第1段階（Pre-training）では，SAM2を用いて各学習画像$I_k$（$k = 1, \ldots, N$はフレーム番号）からインスタンスレベルのセグメンテーションマスク$\mathcal{M}_k = \{M_k^1, M_k^2, \ldots, M_k^{S_k}\}$を取得する．ここで，$S_k$はフレーム$k$におけるセグメント数である．
+まず，第1段階（Pre-training）では，SAM2を用いて各学習画像$I_i$（$i = 1, \ldots, N$はフレーム番号）からインスタンスレベルのセグメンテーションマスクを取得する．
+各フレーム$i$において，オブジェクトマスク$m_i^j$（$j$はオブジェクトインデックス）が得られる．
 
-次に，3DGSの学習において，動的物体を含むセグメントを段階的に除外する適応的マスキングを適用する．具体的には，学習iteration $t$における損失関数$\mathcal{L}_t$を以下のように定義する：
+次に，3DGSの学習において，動的物体を含むセグメントを段階的に除外する適応的マスキングを適用する．
+まず，各オブジェクトマスク$m_i^j$に対して，領域内のピクセルの平均残差$\mathcal{R}_i^j(t)$を算出する：
 \begin{equation}
-\mathcal{L}_t = \sum_{k=1}^{N} \sum_{p \in \mathcal{P}_k} w_t(p) \cdot \ell(\hat{I}_k(p), I_k(p))
+\mathcal{R}_{i}^{j}(t)=\frac{\sum_{p\in m_{i}^{j}}\tilde{\mathcal{R}}(p,t)}{|m_{i}^{j}|}
 \end{equation}
-\vspace{-9pt}
-ここで，$\hat{I}_k(p)$はフレーム$k$のピクセル$p$におけるレンダリング結果，$I_k(p)$は学習用画像，$\ell(\cdot, \cdot)$は２画像間で定義される損失数であり，L1損失とSSIM損失の組み合わせである．$\mathcal{P}_k$はフレーム$k$の全ピクセル集合である．重み$w_t(p)$は，iteration $t$におけるピクセル$p$の動的物体マスク$\mathcal{M}_t^{dynamic}(p)$に基づいて以下のように決定される：
+ここで，$p \in m_{i}^{j}$はマスク内のピクセル位置，$|m_{i}^{j}|$はマスクの面積（ピクセル数），$\tilde{\mathcal{R}}(p,t)$はiteration $t$におけるピクセル$p$の残差である．
+
+各訓練フレームにおいて，残差の期待値$\mathbb{E}[R_i](t)$と分散$Var[R_i](t)$を計算し，それに基づき適応的なローカル閾値$\mathcal{T}_i^L(t)$を決定する：
+\begin{align}
+\mathbb{E}[R_{i}](t) &= \sum_{k=1}^{N}p_{k}\cdot r_{k}(t) \\
+Var[R_{i}](t) &= \frac{1}{N}\sum_{k=1}^{N}(r_{k}(t)-\mathbb{E}[R_{i}](t))^{2}
+\end{align}
+ローカル閾値$\mathcal{T}_i^L(t)$は以下の通りである：
 \begin{equation}
-w_t(p) = \begin{cases}
-0 & \text{if } \mathcal{M}_t^{dynamic}(p) = 1 \\
-1 & \text{otherwise}
-\end{cases}
+\mathcal{T}_{i}^{L}(t) = \mathbb{E}[R_{i}](t) + \sqrt{Var[R_{i}](t)} \left(1 + \lambda_{L} \frac{T_{max} - t}{T_{max}}\right)
+\end{equation}
+ここで，$\lambda_L$は調整パラメータ，$T_{max}$は最大iteration数，$t$は現在のiterationである．
+この閾値を超える平均残差を持つオブジェクトをローカルマスク$\mathcal{M}_i^L(t)$と同定する：
+\begin{equation}
+\mathcal{M}_{i}^{L}(t)=\{m_{i}^{j}|\mathcal{R}_{i}^{j}(t)>\mathcal{T}_{i}^{L}(t),j\in N_{i}\}
+\end{equation}
+ここで，$N_i$はフレーム$i$におけるオブジェクトの集合である．
+
+一時的に静止している物体（信号待ちの車など）を捕捉するため，より高い基準のグローバル閾値$\mathcal{T}_i^G$を用いて追跡を行う：
+\begin{equation}
+\mathcal{T}_{i}^{G}=\mathbb{E}[R_{i}](t)+\lambda_{G}\sqrt{Var[R_{i}](t)}
+\end{equation}
+ここで，$\lambda_G$は調整パラメータである．
+閾値を超えたオブジェクト$\hat{m}_i^j$を追跡し，グローバルマスクセットを更新する：
+\begin{equation}
+\mathcal{M}_{i}^{G}(t)=\mathcal{M}_{i}^{G}(t-1)\cup\hat{m}_{i}^{j}
 \end{equation}
 
-動的物体マスク$\mathcal{M}_t^{dynamic}$は，各iterationにおいて更新される．初期iterationでは全セグメントを学習対象とするが，学習が進むにつれて，複数フレーム間で一貫性のない再構成誤差を示すセグメントを動的物体として同定し，それを段階的に損失関数から除外する．具体的には，セグメント$M_k^i$の動的度合い$D_k$を以下の式で計算する：
+最終的な排除マスク$\mathcal{M}_i(t)$は，ローカルとグローバルの和集合として得られる：
 \begin{equation}
-D_k = \frac{1}{|M_k^i|} \sum_{p \in M_k^i} \max_{q \in P_k} \ell(\hat{I}_k(q), I_k(q))
+\mathcal{M}_{i}(t)=\mathcal{M}_{i}^{L}(t)\cup\mathcal{M}_{i}^{G}(t)
 \end{equation}
-\vspace{-9pt}
-ここで，$|M_k^i|$はセグメント$M_k^i$の画素数である．式(8)で計算された動的度合い$D_k$が閾値$\tau_{dynamic}$を超える場合，そのセグメント$M_k^i$に含まれるピクセル$p$に対して$\mathcal{M}_t^{dynamic}(p) = 1$を設定する．これにより，式(7)の重み$w_t(p)$が0となり，式(6)の損失関数$\mathcal{L}_t$から該当ピクセルが除外される．このようにして，動的度合いが閾値を超えるセグメントは動的物体として判定され，その後の学習から除外される．
+このマスク$\mathcal{M}_i(t)$に含まれるピクセルは，損失関数から除外され，動的物体として扱われる．
 
 第2段階（Main training）では，第1段階で得られた動的物体マスクを用いて，動的物体を除外した画像に対して3DGSを再学習する．これにより，動的な不要物体を考慮しない高品質な3次元再構成が可能となる．
 提案手法の評価実験では，従来の3DGS に対し，ドローン撮影時の再構成精度および視点合成品質の両面で有意な改善を示しつつ，GPU 上でのリアルタイムレンダリング性能も維持できることが報告されている（図\ref{fig:comparison}）．
@@ -712,46 +732,36 @@ SAM3で検出された物体のうち，動的物体マスクと重複するも�
 
 
 \subsection{動的物体の検出}
-動的物体は，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される． 
-本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，各フレームの損失から不要物体を同定する．
+本手法では，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}の学習アルゴリズムを拡張し，動的物体を検出する．
+動的物体は，3D Gaussian Splatting\cite{kerbl3Dgaussians}の学習過程において，複数フレーム間で一貫性のない再構成誤差を示す領域として検出される．
 
-具体的には，学習開始から一定のiteration（本実験では500 iteration）経過後，各フレームのレンダリング結果と正解画像との間のL1損失およびSSIM損失を計算する．
-これらの損失を正規化し，以下の式で統合損失を算出する：
+DroneSplatの動的物体検出プロセスは，2.3.1節で述べた通り，適応的ローカルマスキングと相補的グローバルマスキングにより実現される．
+まず，SAM2により取得された各オブジェクトマスク$m_i^j$に対して平均残差$\mathcal{R}_i^j(t)$を算出し（式(6)），残差の期待値と分散に基づいて適応的なローカル閾値$\mathcal{T}_i^L(t)$を決定する（式(7)-(9)）．
+さらに，一時的に静止している物体を捕捉するため，グローバル閾値$\mathcal{T}_i^G$を用いた追跡を行う（式(11), (13)）．
+最終的に，ローカルマスク$\mathcal{M}_i^L(t)$とグローバルマスク$\mathcal{M}_i^G(t)$の和集合として，動的物体の排除マスク$\mathcal{M}_i^{DS}(t)$が得られる（式(14)）：
 \begin{equation}
-l_{\text{Combined}}(x^{(p)}, y^{(p)}) = \frac{4 \cdot l_{\text{L1}}^{\text{norm}}(x^{(p)}, y^{(p)}) + l_{\text{SSLM}}^{\text{norm}}(x^{(p)}, y^{(p)})}{5}
+\mathcal{M}_{i}^{DS}(t)=\mathcal{M}_{i}^{L}(t)\cup\mathcal{M}_{i}^{G}(t)
 \end{equation}
-ここで，$x^{(p)}$は画素$p$におけるレンダリング結果，$y^{(p)}$は正解画像の画素$p$の値である．
-$l_{\text{L1}}^{\text{norm}}$と$l_{\text{SSLM}}^{\text{norm}}$は，それぞれL1損失とSSIM損失を0-1の範囲に正規化した値である．
-L1損失は画素値の絶対誤差を測定し，SSIM損失は構造的類似性を考慮するため，両者を組み合わせることでより包括的な誤差評価が可能となる．
-式(1)では，L1損失に4倍の重みを付けることで，画素レベルの精度を重視しつつ，構造的類似性も考慮した統合損失を実現している．
+ここで，添字$DS$はDroneSplatにより得られたマスクであることを示す．
 
-次に，各フレームに与えられた物体のセグメンテーションマスクを用いて，物体単位での損失を集計する．
-物体のセグメンテーションにより，画像内の各物体（人，車，建物など）が個別に検出され，各物体に対応するマスク領域が得られる．
-物体$i$の損失$L_i$は，以下の式で計算される：
+\subsubsection{損失関数}
+標準的な3D Gaussian Splattingでは，レンダリングされた画像と正解画像の間のL1損失とD-SSIM損失を組み合わせた損失関数が用いられる：
 \begin{equation}
-L_i = \frac{\sum_{p \in M_i} L_{combined}(p)}{|M_i|}
+\mathcal{L}_{C} = (1 - \lambda_{dssim})\mathcal{L}_{L1} + \lambda_{dssim}\mathcal{L}_{D-SSIM}
 \end{equation}
-ここで，$M_i$は物体$i$のマスク領域，$|M_i|$はその画素数である．
-式(2)は，物体$i$に属するすべての画素の統合損失の平均値を計算する．
-動的物体は複数フレーム間で一貫性のない再構成誤差を示すため，物体単位で損失を集計することで，各物体全体の動的度合いを評価できる．
-画素単位ではなく物体単位で評価することで，物体の一部だけが誤差を示す場合でも，物体全体として動的かどうかを適切に判定できる．
+ここで，$\lambda_{dssim}$は各損失項の寄与を調整する重み係数である．
+$\mathcal{L}_{L1}$はピクセル単位の色誤差（平均絶対誤差）を表し，$\mathcal{L}_{D-SSIM}$は構造的類似性に基づく損失で，視覚的な一貫性を保つために使用される．
 
-各物体の損失値をヒートマップとして可視化し，動的閾値$T_{dynamic}$を以下の式で決定する：
+DroneSplatでは，動的物体の影響を排除するため，同定されたマスク$\mathcal{M}_i^{DS}(t)$を損失関数に組み込む．
+各フレーム$i$における損失関数$\mathcal{L}_i(t)$は以下のように定義される：
 \begin{equation}
-T_{dynamic} = \mu + \sigma + \alpha \cdot \sigma \cdot \frac{I_{\max} - I_{current}}{I_{\max}}
+\mathcal{L}_i(t) = \sum_{p \in \mathcal{P}_i} \left[(1 - \lambda_{dssim})\mathcal{M}_i^{DS}(p,t)\mathcal{L}_{L1}(p) + \lambda_{dssim}\mathcal{M}_i^{DS}(p,t)\mathcal{L}_{D-SSIM}(p)\right]
 \end{equation}
-ここで，$\mu$と$\sigma$はヒートマップの平均値と標準偏差，$I_{current}$と$I_{\max}$は現在のiterationと最大iteration，$\alpha$は調整パラメータである．
-式(3)の第1項$\mu + \sigma$は，統計的に異常な損失値を持つ物体を検出するための基準値である．
-平均値$\mu$に標準偏差$\sigma$を加えることで，損失値が平均よりも1標準偏差以上大きい物体を動的物体の候補として検出する．
-第2項$\alpha \cdot \sigma \cdot \frac{I_{\max} - I_{current}}{I_{\max}}$は，学習の進行に応じて閾値を動的に調整する項である．
-学習初期（$I_{current}$が小さい）では，この項の値が大きく，より多くの物体が動的物体として検出される可能性がある．
-これは，学習初期は再構成精度が低く，静止物体でも高い損失を示す可能性があるためである．
-学習が進むにつれて（$I_{current}$が$I_{\max}$に近づく），この項の値は小さくなり，より厳格な基準で動的物体を検出する．
-これにより，学習が進んで再構成精度が向上した後は，真に動的な物体のみを検出できるようになる．
-この適応的閾値により，学習の進行に応じて動的物体の検出感度を調整し，誤検出を抑制しながら動的物体を確実に検出できる．
+ここで，$p \in \mathcal{P}_i$はフレーム$i$の全ピクセル集合，$\mathcal{M}_i^{DS}(p,t)$はiteration $t$におけるピクセル$p$の動的物体マスク（0または1の値を取る）である．
+マスクが0の領域では損失が0となり，マスクが1の領域では通常の損失が計算される．
+これにより，動的物体が存在する領域の誤差を無視して最適化を行うことが可能となる．
 
-損失値が閾値を超える物体は動的物体として判定され，そのマスクが除外対象として記録される．
-学習の最終iterationにおいて，すべての学習フレームに対する除外マスクを保存する．
+学習の最終iterationにおいて，すべての学習フレームに対する動的物体の除外マスク$\mathcal{M}_i^{DS}(t)$を保存する．
 
 \subsection{静止物体の検出とフィルタリング}
 
@@ -760,32 +770,54 @@ SAM3は，テキストプロンプト（本実験では"car"）に基づいて�
 各フレームにおいて，検出された物体のマスク，バウンディングボックス，信頼度スコアが出力される．
 しかし，SAM3は動的・静止を区別せずにすべての不要物体を検出するため，動的物体と静止物体を区別する必要がある．
 本手法では，3.1節で検出された動的物体のマスクとSAM3の検出結果を比較し，重複する物体を除外する．
-具体的には，SAM3で検出された各物体$o_j$について，そのマスク$M_{SAM3}(o_j)$と動的物体のマスク$M_{dynamic}$との重複率$R_{overlap}$を以下の式で計算する：
+具体的には，SAM3で検出された各物体$m_i^j$について，そのマスクと動的物体のマスク$\mathcal{M}_i^{DS}(t)$との重複率$R_{overlap}(m_i^j)$を以下の式で計算する：
 \begin{equation}
-R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
+R_{overlap}(m_i^j) = \frac{|m_i^j \cap \mathcal{M}_i^{DS}(t)|}{|m_i^j|}
 \end{equation}
-\vspace{-9pt}
-ここで，$|M_{SAM3}(o_j) \cap M_{dynamic}|$は重複領域の画素数，$|M_{SAM3}(o_j)|$はSAM3で検出された物体の総画素数である．
+ここで，$|m_i^j \cap \mathcal{M}_i^{DS}(t)|$は重複領域の画素数，$|m_i^j|$はSAM3で検出された物体$m_i^j$の総画素数である．
 重複率が閾値$T_{overlap}$（本実験では0.5）を超える場合，その物体は動的物体として既に検出されていると判定し，SAM3の検出結果から除外する．
-これにより，静止物体のみが残る．
 
-\subsection{不要物の除去}
+動的物体の排除マスク$\mathcal{M}_i^{DS}(t)$は，ローカルマスク$\mathcal{M}_i^L(t)$とグローバルマスク$\mathcal{M}_i^G(t)$の和集合として定義される（式(14)）：
+\begin{equation}
+\mathcal{M}_i^{DS}(t) = \mathcal{M}_i^L(t) \cup \mathcal{M}_i^G(t)
+\end{equation}
 
-同定された不要物（動的物体および静止物体）は，画像インペインティング技術を用いて除去する．
-本手法では，Large Mask Inpainting (LaMa)\cite{suvorov2021resolution}を使用する．
-静止物体のマスクは，境界の拡張処理を適用してからインペインティングを行う．
-具体的には，形態学的な膨張処理（カーネルサイズ15ピクセル）により，マスクの境界を拡張し，より自然な補完結果を得る．
-各物体は順次処理され，最終的にすべての不要物が除去された画像が生成される．
-この画像を3D Gaussian Splattingの学習データとして使用することで，動的物体の影響を受けない高品質な3Dシーン再構成が可能となる．
-なお，本研究ではSAM2\cite{ravi2024sam2}とLaMaを統合したInpaintAnything\cite{yu2023inpaint}を使用する．
+SAM3によって得られた全オブジェクトマスクの集合を$S(I_i) = \{m_i^1, m_i^2, \ldots, m_i^{N_i}\}$とする．
+ここで，$N_i$はフレーム$i$におけるSAM3で検出されたオブジェクト数である．
+この中から，動的物体領域$\mathcal{M}_i^{DS}(t)$に含まれない箇所，すなわち静的なオブジェクトを「デリートするべきマスク」$\mathcal{M}_{del, i}(t)$として抽出する．
+各マスク$m_i^j$と静的領域（動的領域の補集合$\overline{\mathcal{M}_i^{DS}(t)}$）との重複割合が閾値$T_{overlap} = 0.5$を超える場合，そのマスクを静的オブジェクトとして判定する：
+\begin{equation}
+\mathcal{M}_{del, i}(t) = \left\{ m_i^j \in S(I_i) \mid \frac{|m_i^j \cap \overline{\mathcal{M}_i^{DS}(t)}|}{|m_i^j|} > T_{overlap} \right\}
+\end{equation}
+ここで，$\overline{\mathcal{M}_i^{DS}(t)}$は画像$I_i$における動的物体領域の補集合（静的領域）を表し，$|\cdot|$は領域内のピクセル数（面積）を表す．
+$T_{overlap} = 0.5$は静的オブジェクトとして判定するための重複閾値である．
+
+\subsection{不要物の除去とデータセットの再構築}
+本手法では，特定された不要な静止オブジェクト $\mathcal{M}_{del, i}(t)$ に対してのみ画像インペインティングを適用し，背景情報を補完した学習データセットを構築する．
+まず，フレーム $i$ において削除対象として同定されたオブジェクト群の和集合を，インペイント用の単一マスク $\mathcal{M}_{inpaint, i}(t)$ として以下のように構成する：
+\begin{equation}
+\mathcal{M}_{inpaint, i}(t) = \bigcup_{m \in \mathcal{M}_{del, i}(t)} m
+\end{equation}
+
+このマスク領域に対し，Large Mask Inpainting (LaMa)\cite{suvorov2021resolution} を用いて不要物を除去した補完画像 $\hat{I}_i$ を生成する：
+\begin{equation}
+\hat{I}_i = \text{LaMa}(I_i, \mathcal{M}_{inpaint, i}(t))
+\end{equation}
+ここで，$I_i$ は元の入力画像である．なお，インペインティングの前処理として，マスク境界の連続性を確保するために形態学的な膨張処理を適用する．
+
+最終的に，すべての学習フレームに対して生成された補完画像集合 $\hat{\mathcal{I}} = \{ \hat{I}_1, \hat{I}_2, \ldots, \hat{I}_N \}$ を新たな学習データセット $\mathcal{D}_{refined}$ として再構築する：
+\begin{equation}
+\mathcal{D}_{refined} = \{ (\hat{I}_i, \theta_i) \mid \hat{I}_i \in \hat{\mathcal{I}} \}
+\end{equation}
+ここで，$\theta_i$ は対応するカメラパラメータである．この $\mathcal{D}_{refined}$ を用いて，DroneSplatと同様の損失関数で学習を行う際，動的物体については引き続き $\mathcal{M}_i^{DS}(t)$ を用いた損失関数のマスキングにより対応することで，動体・静止物双方の影響を排除した再構成を実現する．
 
 
 \newpage
 \section{評価実験と考察}
 \subsection{データセット}
-本実験のため，歩行中の人と静止している人の両方が映っている学習用画像を取得した．
+本実験のため，歩行中の人と静止している人の両方が映っている学習用画像を撮影した（Aoba_001データセット）．
 撮影にはDJI社のDJI Mini 4 Proを使用した．
-実験に際しては本校の学生と教員合わせて5名の被験者に依頼し撮影に協力してもらった．
+実験に際しては本学の学生と教員合わせて5名の被験者に依頼し撮影に協力してもらった．
 撮影は静止している人を中心として半円を描くような軌道で撮影を行った．
 画像データの詳細を表\ref{tab:dataset_details}に示した．
 
@@ -794,7 +826,7 @@ R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
   \caption{データセットの詳細}
   \begin{tabular}{lcc}
     \toprule
-    項目 & Aoba\_001 & Simingshan \\
+    項目 & Aoba\_001 & Simingshan\cite{tang2025dronesplat3dgaussiansplatting} \\
     \midrule
     画像数 & 44枚 & 24枚 \\
     解像度 & 1920$\times$1080 & 1920$\times$1080 \\
@@ -807,14 +839,14 @@ R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
 \end{table}
 
 
-本実験で使用したAoba\_001データセットのサンプル画像を図\ref{fig:dataset_aoba}に示した．
-評価用のデータセットとして，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で使用されたデータセットを用いた（図\ref{fig:dataset_samples}）．
+本実験で使用したAoba\_001データセットのサンプル画像を図\ref{fig:dataset_aoba}に示す．
+評価用のデータセットとして，DroneSplat\cite{tang2025dronesplat3dgaussiansplatting}で使用されたデータセットSimingshan\cite{tang2025dronesplat3dgaussiansplatting}を用いた（図\ref{fig:dataset_samples}）．
 本データセットは交通量の多い道路をドローンで撮影したものであり，駐車中の車両と走行中の車両の両方を含んでいる．
 様々な画角から撮影されているが，ある時刻において写り込んでいる車両が他の時刻では画面内に映っていない場合もある．
 データは時系列ごとに並べられているわけではなく，独立した時刻の画像を集めたものである．
 
 \vspace{10pt}
-\begin{figure}[b]
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.32\columnwidth]{img-for-paper/Aoba_001/frame_00000.jpg}\hfill
   \includegraphics[width=0.32\columnwidth]{img-for-paper/Aoba_001/frame_00021.jpg}\hfill
@@ -823,7 +855,9 @@ R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
   \caption{データセットAoba\_001}
   \label{fig:dataset_aoba}
 \end{figure}
-\begin{figure}[b]
+\FloatBarrier
+
+\begin{figure}[htbp]
   \centering
   \includegraphics[width=0.32\columnwidth]{img-for-paper/2411006_18_001.jpg}\hfill
   \includegraphics[width=0.32\columnwidth]{img-for-paper/2411006_18_002.jpg}\hfill
@@ -833,11 +867,11 @@ R_{overlap}(o_j) = \frac{|M_{SAM3}(o_j) \cap M_{dynamic}|}{|M_{SAM3}(o_j)|}
   \label{fig:dataset_samples}
 \end{figure}
 \vspace{10pt}
-
+\FloatBarrier
 
 \subsection{不要物同定アルゴリズムの評価実験}
-次に，SAM3を用いた不要物同定を評価した．
-Simingshanデータセットを用いて，各画像について学習した際にどれくらい多くの車を検出できているかを数え上げて評価した結果を表\ref{tab:detection_comparison}に示した．
+まず最初に，SAM3を用いた不要物同定を評価した．
+Simingshanデータセットを用いて，各画像について学習した際にどれくらい多くの車を検出できているかを数え上げた評価した結果を表\ref{tab:detection_comparison}に示す．
 評価には，DroneSplat，SAM3のみ，および提案手法の3手法を比較した．なお，DroneSplatは停車中の車両を検出するアルゴリズムが実装されていないため，停車中の車両の検出数は記載していない．
 評価結果から，走行中の車両の検出において，提案手法は平均97.4\%の検出率を達成し，DroneSplat（平均58.9\%）およびSAM3のみ（平均74.4\%）と比較して高い検出率を示した．
 停車中の車両の検出において，提案手法は100\%の検出率を達成し，SAM3のみ（平均78.3\%）と比較して高い検出率を示した．提案手法は動的物体との重複を適切に除外することで，より正確な不要物同定を実現した．
@@ -884,6 +918,8 @@ Simingshanデータセットを用いて，各画像について学習した際�
   \end{tabular}
   \label{tab:detection_comparison}
 \end{table}
+\FloatBarrier
+
 \subsection{拡散モデルによる削除部の補完の評価実験}
 映り込みに対応した自由視点画像生成技術のDroneSplat\cite{tang2025dronesplat3dgaussiansplatting}においては，動的物体を学習から削除している．一方，本手法では静止物体を削除した後に拡散モデルによるインペインティング処理を行うことで，欠落した領域を適切に補完する．
 インペインティング処理の効果を評価するため，不要物体を削除した画像とインペインティング処理後の画像を比較した（図\ref{fig:inpainting_comparison}）．
@@ -904,9 +940,7 @@ NeRFと3DGSの評価は，NeRFStudio\cite{nerfstudio}内のモデルを利用し
 一方，DroneSplatと提案手法の評価は，DroneSplatが提供する評価プログラムを用いて検証した．
 評価結果を表\ref{tab:metrics}に示す．
 
-\begin{table}[b]
-  \centering
-  \begin{minipage}[t]{0.48\linewidth}
+\begin{table}[htbp]
   \centering
   \caption{Simingshanデータセットにおける各手法の性能比較}
   \rowcolors{3}{white}{gray!10}  % 3行目以降、交互に灰背景
@@ -927,45 +961,14 @@ NeRFと3DGSの評価は，NeRFStudio\cite{nerfstudio}内のモデルを利用し
     \bottomrule
   \end{tabular}
   \label{tab:metrics}
-  \end{minipage}
-  \hfill
-  \begin{minipage}[t]{0.48\linewidth}
-    \centering
-    \caption{Mip-NeRF360データセットにおける各手法の性能比較\cite{kerbl3Dgaussians}}
-    \rowcolors{3}{white}{gray!10}
-    \begin{tabular}{l
-                    S[table-format=1.3]
-                    S[table-format=2.2]
-                    S[table-format=1.3]}
-      \toprule
-      Method
-        & {SSIM\(\uparrow\)} & {PSNR\(\uparrow\)} & {LPIPS\(\downarrow\)} \\
-      \midrule
-      Plenoxels\cite{yu_and_fridovichkeil2021plenoxels} & 0.626 & 23.08 & 0.463 \\
-      INGP-Base & 0.671 & 25.30 & 0.371 \\
-      INGP-Big & 0.699 & 25.59 & 0.331 \\
-      M-NeRF360\cite{barron2022mipnerf360} & 0.792 & 27.69 & 0.237 \\
-      3DGS\cite{kerbl3Dgaussians} & 0.770 & 25.60 & 0.279 \\
-      \bottomrule
-    \end{tabular}
-    \label{tab:mipnerf360}
-  \end{minipage}
 \end{table}
 
 DroneSplatと提案手法は，従来手法であるNeRFや3DGSと比較して劇的な性能向上を達成した．
 NeRF（PSNR: 19.07 dB，SSIM: 0.417，LPIPS: 0.267）や3DGS（PSNR: 19.68 dB，SSIM: 0.476，LPIPS: 0.254）と比較して，DroneSplatと提案手法はPSNRで約3 dB（約15-16\%），SSIMで約60\%，LPIPSで約40\%の劇的な改善を示している．
-
-さらに重要な点として，提案手法は動的シーン（Simingshanデータセット）において，静止シーンを対象とした先行研究\cite{kerbl3Dgaussians}と遜色ない性能を達成している．
-表\ref{tab:mipnerf360}に，3DGSの論文\cite{kerbl3Dgaussians}で報告されているMip-NeRF360データセット（静止シーン）における各手法の評価結果を示す．
-提案手法は動的シーンにおいてPSNR 22.79 dB，SSIM 0.757，LPIPS 0.155を達成しており，静止シーンでの結果と比較すると，特にLPIPSではMip-NeRF360（0.237）や3DGS（0.279）を上回る性能を示している．
-SSIMについても0.757という値は，静止シーンでの3DGS（0.770）に近い値を達成しており，動的シーンでも静止シーンと遜色ない構造的類似性を実現できている．
-これらの結果は，提案手法が動的シーンという従来手法が困難としていた条件下でも，静止シーンを対象とした先行研究と同等の高品質な3次元再構成を実現できていることを明確に示している．
-提案手法とDroneSplatの比較において，提案手法はPSNRで最高値（22.79 dB）を達成し，DroneSplat（22.76 dB）と同等の性能を示した．
-SSIMとLPIPSにおいても，提案手法（SSIM: 0.757，LPIPS: 0.155）はDroneSplat（SSIM: 0.759，LPIPS: 0.152）とわずかな差であり，実質的に同等の性能を示した．
-これは，提案手法がDroneSplatと遜色なく3次元再構成を実現できていることを示しており，不要物除去という追加機能を提供しながらも，再構成品質を維持できていることを意味する．
-
 3つの評価指標は強い正の相関を示しており，各手法の性能が全指標で一貫して評価されていることが確認された．
 
+また，DroneSplatと提案手法の学習の過程を図\ref{fig:loss_comparison}に示す．
+提案手法は学習用画像を一部改変して学習しているが，問題なく学習できていることがわかる．
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\linewidth]{img-for-paper/loss_comparison.png}
@@ -973,18 +976,35 @@ SSIMとLPIPSにおいても，提案手法（SSIM: 0.757，LPIPS: 0.155）はDro
   \label{fig:loss_comparison}
 \end{figure}
 \vspace{10pt}
+\FloatBarrier
 
-\newpage
+\clearpage
 \section{おわりに}
-おわりに...
-
-
-
-
+\section{おわりに}
 
 \subsection{結論}
+本研究では，ドローンを用いた屋外環境の3次元再構成において課題となっていた，動的物体および特定の不要な静止物体を，テキスト指示に基づき自動的に除去する手法を開発した．
+従来の3D Gaussian Splatting（3DGS）やDroneSplatでは，撮影時刻によって位置が変化する動体への対応はなされていたものの，ユーザの意図に沿った特定の静止物体（停車中の車両等）を柔軟に排除することは困難であった．
+
+本手法では，セマンティックセグメンテーションモデルであるSAM3と画像インペインティング技術LaMaをDroneSplatの学習パイプラインに統合した．
+具体的には，SAM3のテキストプロンプト機能を活用してユーザが指定した不要な静止オブジェクトを同定し，動体検出しきれなかった領域を補完するとともに，LaMaを用いてこれらの領域を周囲の文脈に基づき自然に補完した学習データセット $\mathcal{D}_{refined}$ を再構築した．
+
+評価実験の結果，Simingshanデータセットにおいて，提案手法は車両の検出率においてDroneSplatを大きく上回り，特に停車中の車両に関しては100\%の検出率を達成した．
+また，3次元再構成の品質評価においても，PSNR 22.79 dB，SSIM 0.757というDroneSplatと同等の高い精度を維持しつつ，指定した物体が完全に除去された自由視点画像を生成できることを確認した．
+本研究により，ドローン撮影時の映り込みに対する前処理の工数が大幅に削減され，文化財アーカイブやゲーム制作における背景モデリングなど，実用的な3次元再構成の活用の幅が広がることが期待される．
+
 \subsection{今後の課題}
-課題は
+本研究の成果により，テキスト指示による不要物除去の有効性が示されたが，依然として以下の課題が残されている．
+
+第一に，計算コストの課題である．SAM3による動画シーケンス全体の追跡とLaMaによる高解像度画像のインペインティング処理は，事前処理として相応の時間を要する．
+実用性の更なる向上のためには，これらの処理を3DGSの学習ループ内に統合し，最適化と並行して物体除去を行う効率的なアルゴリズムの開発が求められる．
+
+第二に，複雑な環境における補完精度の限界である．
+本研究で用いたLaMaは強力な補完能力を持つが，除去対象の背後にある背景が非常に複雑な構造を持つ場合や，広範囲にわたって物体が重なり合っている（オクルージョン）場合には，再構成された3次元空間に歪みが生じることがある．
+これに対し，最新の動画生成モデルや大規模言語モデルを用いた3次元的な整合性を持つインペインティング手法の導入が検討される．
+
+第三に，指示の抽象化と自動化である．現在は「car」や「person」といった具体的な名詞による指定を行っているが，今後は「通行の邪魔になるものすべて」といったより抽象的な指示への対応や，3次元構造の不整合自体をAIが判断して除去候補を提案するような，より高度なインターフェースの構築を目指したい．
+
 
 
 % 手動で参考文献見出しを配置
